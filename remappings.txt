@@ -1,0 +1,9 @@
+lib/relay-contracts:@openzeppelin/contracts-upgradeable/=lib/relay-contracts/lib/openzeppelin-contracts-upgradeable/contracts/
+lib/relay-contracts:@openzeppelin/contracts/=lib/relay-contracts/lib/openzeppelin-contracts/contracts/
+lib/relay-contracts:@symbioticfi/rewards/=lib/relay-contracts/lib/rewards/
+lib/relay-contracts:@symbioticfi/core/=lib/relay-contracts/lib/core/
+lib/relay-contracts:@crypto-lib/=lib/relay-contracts/lib/crypto-lib/src/
+
+@symbioticfi/relay-contracts/=lib/relay-contracts/src/
+@symbioticfi/core-contracts/=lib/core-contracts
+@openzeppelin/=lib/openzeppelin-contracts

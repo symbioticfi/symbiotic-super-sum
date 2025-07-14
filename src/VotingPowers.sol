@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.25;
+
+import {VotingPowerProvider} from "@symbioticfi/relay-contracts/contracts/modules/voting-power/VotingPowerProvider.sol";
+import {OzOwnable} from "@symbioticfi/relay-contracts/contracts/modules/common/permissions/OzOwnable.sol";
+import {EqualStakeVPCalc} from
+    "@symbioticfi/relay-contracts/contracts/modules/voting-power/common/voting-power-calc/EqualStakeVPCalc.sol";
+import {OperatorVaults} from "@symbioticfi/relay-contracts/contracts/modules/voting-power/extensions/OperatorVaults.sol";
+import {OpNetVaultAutoDeploy} from
+    "@symbioticfi/relay-contracts/contracts/modules/voting-power/extensions/OpNetVaultAutoDeploy.sol";
+
+contract VotingPowers is VotingPowerProvider, OzOwnable, EqualStakeVPCalc, OpNetVaultAutoDeploy {
+    constructor(address operatorRegistry, address vaultFactory, address vaultConfigurator)
+        VotingPowerProvider(operatorRegistry, vaultFactory)
+        OpNetVaultAutoDeploy(vaultConfigurator)
+    {}
+
+    function initialize(
+        VotingPowerProviderInitParams memory votingPowerProviderInitParams,
+        OpNetVaultAutoDeployInitParams memory opNetVaultAutoDeployInitParams,
+        OzOwnableInitParams memory ozOwnableInitParams
+    ) public virtual initializer {
+        __VotingPowerProvider_init(votingPowerProviderInitParams);
+        __OpNetVaultAutoDeploy_init(opNetVaultAutoDeployInitParams);
+        __OzOwnable_init(ozOwnableInitParams);
+        __EqualStakeVPCalc_init();
+    }
+
+    function _registerOperatorImpl(address operator) internal override(OpNetVaultAutoDeploy, VotingPowerProvider) {
+        super._registerOperatorImpl(operator);
+    }
+}
