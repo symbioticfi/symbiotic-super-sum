@@ -124,7 +124,7 @@ Note: it creates task to sum 2+2, in sum and sidecar nodes you can see related l
 
 ### Check task result
 
-```
+```bash
 cast call 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF "allTaskResults(uint32)" {TASK_ID} --rpc-url http://127.0.0.1:8545
 ```
 
