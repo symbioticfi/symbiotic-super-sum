@@ -96,7 +96,7 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupCore() public {
         vm.startBroadcast(deployer);
-        _initCore_SymbioticCore(false, false);
+        _initCore_SymbioticCore(false);
         vm.stopBroadcast();
 
         console.log("Symbiotic Core contracts:");
