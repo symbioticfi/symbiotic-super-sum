@@ -47,7 +47,7 @@ Note: By default anvil is using on-demand mining which is not compatible with re
 ### Set network genesis
 
 ```bash
-{genesis} network generate-genesis --chains http://127.0.0.1:8545 --driver-address 0x4826533B4897376654Bb4d4AD88B7faFD0C98528 --driver-chainid 31337 --commit --secret-keys 31337:ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+./bin/symbiotic_relay_utils network generate-genesis --chains http://127.0.0.1:8545 --driver-address 0x4826533B4897376654Bb4d4AD88B7faFD0C98528 --driver-chainid 31337 --commit --secret-keys 31337:ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
 Note: if it's failing try again in 5 seconds
@@ -56,7 +56,7 @@ Note: if it's failing try again in 5 seconds
 
 Sidecar 1 (signer only):
 ```bash
-{sidecar} --config sidecar.common.yaml \
+./bin/symbiotic_relay --config sidecar.common.yaml \
     --secret-keys symb/0/15/1000000000000000000,evm/1/31337/77814517325470205911140941194401928579557062014761831930645393041380819009408 \
     --http-listen :8081 \
     --storage-dir .data-01
@@ -64,7 +64,7 @@ Sidecar 1 (signer only):
 
 Sidecar 2 (Signer + Aggregator):
 ```bash
-{sidecar} --config sidecar.common.yaml \
+./bin/symbiotic_relay --config sidecar.common.yaml \
     --secret-keys symb/0/15/1000000000000000001,evm/1/31337/77814517325470205911140941194401928579557062014761831930645393041380819009408 \
     --http-listen :8082 \
     --storage-dir .data-02 \
@@ -73,7 +73,7 @@ Sidecar 2 (Signer + Aggregator):
 
 Sidecar 3 (Signer + Committer):
 ```bash
-{sidecar} --config sidecar.common.yaml \
+./bin/symbiotic_relay --config sidecar.common.yaml \
     --secret-keys symb/0/15/1000000000000000002,evm/1/31337/77814517325470205911140941194401928579557062014761831930645393041380819009408 \
     --http-listen :8083 \
     --storage-dir .data-03 \
@@ -82,11 +82,17 @@ Sidecar 3 (Signer + Committer):
 
 Note: it's enough to run only 3 out 4 nodes since quorum threshold is 2/3+1
 
+### Build sum node
+```bash
+cd off-chain
+go build -o sum_node ./cmd/node/
+```
+
 ### Run sum network nodes
 
 Node 1 (connected with sidecar 1):
 ```bash
-{sum_node} --evm-rpc-url http://127.0.0.1:8545 \
+./off-chain/sum_node --evm-rpc-url http://127.0.0.1:8545 \
     --relay-api-url http://localhost:8081/api/v1 \
     --contract-address 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF \
     --private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
@@ -94,7 +100,7 @@ Node 1 (connected with sidecar 1):
 
 Node 2 (connected with sidecar 2):
 ```bash
-{sum_node} --evm-rpc-url http://127.0.0.1:8545 \
+./off-chain/sum_node --evm-rpc-url http://127.0.0.1:8545 \
     --relay-api-url http://localhost:8082/api/v1 \
     --contract-address 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF \
     --private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
@@ -102,7 +108,7 @@ Node 2 (connected with sidecar 2):
 
 Node 3 (connected with sidecar 3):
 ```bash
-{sum_node} --evm-rpc-url http://127.0.0.1:8545 \
+./off-chain/sum_node --evm-rpc-url http://127.0.0.1:8545 \
     --relay-api-url http://localhost:8083/api/v1 \
     --contract-address 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF \
     --private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
