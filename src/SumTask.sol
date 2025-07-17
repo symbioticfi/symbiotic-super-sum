@@ -11,6 +11,13 @@ contract SumTask {
         uint48 requiredEpoch;
     }
 
+    enum TaskStatus {
+        CREATED,
+        RESPONDED,
+        EXPIRED,
+        NOT_FOUND
+    }
+
     event NewTaskCreated(uint32 indexed taskIndex, Task task);
 
     event TaskResponded(uint32 indexed taskIndex, uint256 result);
@@ -25,11 +32,31 @@ contract SumTask {
 
     mapping(uint32 => uint256) public allTaskResults;
 
+    mapping(uint32 => bool) public isTaskResponded;
+
     constructor(address _settlement) {
         settlement = ISettlement(_settlement);
     }
 
-    function createTask(uint256 numberA, uint256 numberB) external {
+    function getTaskStatus(uint32 taskIndex) external view returns (TaskStatus) {
+        if (taskIndex >= tasksCount) {
+            return TaskStatus.NOT_FOUND;
+        }
+
+        Task memory task = allTasks[taskIndex];
+
+        if (uint32(block.number) > task.taskCreatedBlock + TASK_RESPONSE_WINDOW_BLOCK) {
+            return TaskStatus.EXPIRED;
+        }
+
+        if (isTaskResponded[taskIndex]) {
+            return TaskStatus.RESPONDED;
+        }
+
+        return TaskStatus.CREATED;
+    }
+
+    function createTask(uint256 numberA, uint256 numberB) external returns (uint32) {
         Task memory newTask = Task({
             numberA: numberA,
             numberB: numberB,
@@ -39,7 +66,8 @@ contract SumTask {
 
         allTasks[tasksCount] = newTask;
         emit NewTaskCreated(tasksCount, newTask);
-        tasksCount = tasksCount + 1;
+
+        return tasksCount++;
     }
 
     function respondTask(uint32 taskIndex, uint256 result, bytes calldata proof) external {
@@ -67,6 +95,7 @@ contract SumTask {
         require(isValid, "Invalid quorum signature");
 
         allTaskResults[taskIndex] = result;
+        isTaskResponded[taskIndex] = true;
 
         emit TaskResponded(taskIndex, result);
     }

@@ -24,6 +24,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	TaskCreated uint8 = iota
+	TaskResponded
+	TaskExpired
+	TaskNotFound
+)
+
 type config struct {
 	evmRpcURL       string
 	relayApiURL     string
@@ -31,6 +38,10 @@ type config struct {
 	privateKey      string
 	logLevel        string
 }
+
+var relayClient *relay_api.Client
+var evmClient *ethclient.Client
+var sumContract *contracts.SumTask
 
 func main() {
 	slog.Info("Running sum task off-chain client", "args", os.Args)
@@ -97,17 +108,18 @@ var rootCmd = &cobra.Command{
 
 		ctx := signalContext(context.Background())
 
-		evmClient, err := ethclient.DialContext(ctx, cfg.evmRpcURL)
+		var err error
+		evmClient, err = ethclient.DialContext(ctx, cfg.evmRpcURL)
 		if err != nil {
 			return errors.Errorf("failed to create evm client: %w", err)
 		}
 
-		relayClient, err := relay_api.NewClient(cfg.relayApiURL)
+		relayClient, err = relay_api.NewClient(cfg.relayApiURL)
 		if err != nil {
 			return errors.Errorf("failed to create relay client: %w", err)
 		}
 
-		sumContract, err := contracts.NewSumTask(common.HexToAddress(cfg.contractAddress), evmClient)
+		sumContract, err = contracts.NewSumTask(common.HexToAddress(cfg.contractAddress), evmClient)
 		if err != nil {
 			return errors.Errorf("failed to create sum contract: %w", err)
 		}
@@ -138,12 +150,12 @@ var rootCmd = &cobra.Command{
 				}
 				lastBlock = endBlockNumber + 1
 
-				err = processNewTasks(ctx, relayClient, events)
+				err = processNewTasks(ctx, events)
 				if err != nil {
 					fmt.Printf("Error processing new task event: %v\n", err)
 				}
 
-				err = fetchResults(ctx, relayClient, evmClient, sumContract)
+				err = fetchResults(ctx)
 				if err != nil {
 					fmt.Printf("Error fetching results: %v\n", err)
 				}
@@ -154,9 +166,22 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func fetchResults(ctx context.Context, relayClient *relay_api.Client, evmClient *ethclient.Client, sumTask *contracts.SumTask) error {
+func fetchResults(ctx context.Context) error {
 	for taskID, state := range allTasks {
 		if state.AggProof == nil {
+			status, err := sumContract.GetTaskStatus(&bind.CallOpts{
+				Context: ctx,
+			}, taskID)
+			if err != nil {
+				return err
+			}
+
+			if status != TaskCreated {
+				// if task is not in created state just delete it
+				delete(allTasks, taskID)
+				continue
+			}
+
 			resp, err := relayClient.GetAggregationProofGet(ctx, relay_api.GetAggregationProofGetParams{
 				RequestHash: state.SigRequestHash,
 			})
@@ -171,7 +196,7 @@ func fetchResults(ctx context.Context, relayClient *relay_api.Client, evmClient 
 
 			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID, "proof", hexutil.Encode(resp.Proof))
 
-			err = processProof(ctx, taskID, evmClient, sumTask)
+			err = processProof(ctx, taskID)
 			if err != nil {
 				fmt.Printf("Error processing proof: %v\n", err)
 			}
@@ -180,7 +205,7 @@ func fetchResults(ctx context.Context, relayClient *relay_api.Client, evmClient 
 	return nil
 }
 
-func processProof(ctx context.Context, taskID uint32, evmClient *ethclient.Client, sumTask *contracts.SumTask) error {
+func processProof(ctx context.Context, taskID uint32) error {
 	pk, err := crypto.HexToECDSA(cfg.privateKey)
 	if err != nil {
 		return errors.Errorf("failed to parse private key: %w", err)
@@ -197,18 +222,30 @@ func processProof(ctx context.Context, taskID uint32, evmClient *ethclient.Clien
 
 	taskState := allTasks[taskID]
 
-	tx, err := sumTask.RespondTask(txOpts, taskID, taskState.Result, taskState.AggProof)
+	tx, err := sumContract.RespondTask(txOpts, taskID, taskState.Result, taskState.AggProof)
 	if err != nil {
 		return errors.Errorf("failed to respond task: %w", err)
 	}
 
-	slog.InfoContext(ctx, "Submitted response tx", "taskID", taskID, "tx", tx.Hash().String())
+	slog.InfoContext(ctx, "Submitted response tx", "taskID", taskID, "tx", tx.Hash().String(), "gas", tx.Gas())
 	return nil
 }
 
-func processNewTasks(ctx context.Context, relayClient *relay_api.Client, iter *contracts.SumTaskNewTaskCreatedIterator) error {
+func processNewTasks(ctx context.Context, iter *contracts.SumTaskNewTaskCreatedIterator) error {
 	for iter.Next() {
 		evt := iter.Event
+		status, err := sumContract.GetTaskStatus(&bind.CallOpts{
+			Context: ctx,
+		}, evt.TaskIndex)
+		if err != nil {
+			return err
+		}
+
+		if status != TaskCreated {
+			// skip if task is not in created state
+			continue
+		}
+
 		slog.InfoContext(ctx, "Received new task", "taskID", evt.TaskIndex, "task", evt.Task)
 
 		uint32T, _ := abi.NewType("uint32", "", nil)

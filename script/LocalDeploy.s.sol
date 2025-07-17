@@ -36,11 +36,11 @@ import {
 import {BN254G2} from "./utils/BN254G2.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 
-import {Network} from "../src/Network.sol";
-import {KeyRegistry} from "../src/KeyRegistry.sol";
-import {Driver} from "../src/Driver.sol";
-import {VotingPowers} from "../src/VotingPowers.sol";
-import {Settlement} from "../src/Settlement.sol";
+import {Network} from "../src/symbiotic/Network.sol";
+import {KeyRegistry} from "../src/symbiotic/KeyRegistry.sol";
+import {Driver} from "../src/symbiotic/Driver.sol";
+import {VotingPowers} from "../src/symbiotic/VotingPowers.sol";
+import {Settlement} from "../src/symbiotic/Settlement.sol";
 import {SumTask} from "../src/SumTask.sol";
 
 contract LocalDeploy is SymbioticCoreInit {
@@ -57,7 +57,7 @@ contract LocalDeploy is SymbioticCoreInit {
     uint256 public constant MAX_VOTING_POWER = 2 ** 247; // no max limit
     uint256 public constant MIN_INCLUSION_VOTING_POWER = 0; // include anyone
     uint248 public constant QUORUM_THRESHOLD = uint248(1e18) * 2 / 3 + 1; // 2/3 + 1
-    uint8 public constant REQUIRED_KEY_TAG = 15; // 15 is the default key tag (BLS-BN254/0)
+    uint8 public constant REQUIRED_KEY_TAG = 15; // 15 is the default key tag (BLS-BN254/15)
     uint256 public constant OPERATOR_STAKE_AMOUNT = 100000;
     uint256 public constant OPERATOR_COUNT = 4;
 

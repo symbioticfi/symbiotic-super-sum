@@ -57,7 +57,7 @@ Note: if it's failing try again in 5 seconds
 Sidecar 1 (signer only):
 ```bash
 ./bin/symbiotic_relay --config sidecar.common.yaml \
-    --secret-keys symb/0/15/1000000000000000000,evm/1/31337/77814517325470205911140941194401928579557062014761831930645393041380819009408 \
+    --secret-keys symb/0/15/0xde0b6b3a7640000,evm/1/31337/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
     --http-listen :8081 \
     --storage-dir .data-01
 ```
@@ -65,7 +65,7 @@ Sidecar 1 (signer only):
 Sidecar 2 (Signer + Aggregator):
 ```bash
 ./bin/symbiotic_relay --config sidecar.common.yaml \
-    --secret-keys symb/0/15/1000000000000000001,evm/1/31337/77814517325470205911140941194401928579557062014761831930645393041380819009408 \
+    --secret-keys symb/0/15/0xde0b6b3a7640001,evm/1/31337/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
     --http-listen :8082 \
     --storage-dir .data-02 \
     --aggregator true
@@ -74,7 +74,7 @@ Sidecar 2 (Signer + Aggregator):
 Sidecar 3 (Signer + Committer):
 ```bash
 ./bin/symbiotic_relay --config sidecar.common.yaml \
-    --secret-keys symb/0/15/1000000000000000002,evm/1/31337/77814517325470205911140941194401928579557062014761831930645393041380819009408 \
+    --secret-keys symb/0/15/0xde0b6b3a7640002,evm/1/31337/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
     --http-listen :8083 \
     --storage-dir .data-03 \
     --committer true

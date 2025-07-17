@@ -39,7 +39,7 @@ type SumTaskTask struct {
 
 // SumTaskMetaData contains all meta data concerning the SumTask contract.
 var SumTaskMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"constructor\",\"inputs\":[{\"name\":\"_settlement\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"TASK_RESPONSE_WINDOW_BLOCK\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"allTaskResults\",\"inputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"allTasks\",\"inputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"taskCreatedBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"requiredEpoch\",\"type\":\"uint48\",\"internalType\":\"uint48\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"createTask\",\"inputs\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"respondTask\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"result\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"settlement\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"contractISettlement\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"tasksCount\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"event\",\"name\":\"NewTaskCreated\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"indexed\":true,\"internalType\":\"uint32\"},{\"name\":\"task\",\"type\":\"tuple\",\"indexed\":false,\"internalType\":\"structSumTask.Task\",\"components\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"taskCreatedBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"requiredEpoch\",\"type\":\"uint48\",\"internalType\":\"uint48\"}]}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"TaskResponded\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"indexed\":true,\"internalType\":\"uint32\"},{\"name\":\"result\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false}]",
+	ABI: "[{\"type\":\"constructor\",\"inputs\":[{\"name\":\"_settlement\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"TASK_RESPONSE_WINDOW_BLOCK\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"allTaskResults\",\"inputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"allTasks\",\"inputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"taskCreatedBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"requiredEpoch\",\"type\":\"uint48\",\"internalType\":\"uint48\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"createTask\",\"inputs\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"getTaskStatus\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint8\",\"internalType\":\"enumSumTask.TaskStatus\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isTaskResponded\",\"inputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"respondTask\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"result\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"settlement\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"contractISettlement\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"tasksCount\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"event\",\"name\":\"NewTaskCreated\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"indexed\":true,\"internalType\":\"uint32\"},{\"name\":\"task\",\"type\":\"tuple\",\"indexed\":false,\"internalType\":\"structSumTask.Task\",\"components\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"taskCreatedBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"requiredEpoch\",\"type\":\"uint48\",\"internalType\":\"uint48\"}]}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"TaskResponded\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"indexed\":true,\"internalType\":\"uint32\"},{\"name\":\"result\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false}]",
 }
 
 // SumTaskABI is the input ABI used to generate the binding from.
@@ -305,6 +305,68 @@ func (_SumTask *SumTaskCallerSession) AllTasks(arg0 uint32) (struct {
 	return _SumTask.Contract.AllTasks(&_SumTask.CallOpts, arg0)
 }
 
+// GetTaskStatus is a free data retrieval call binding the contract method 0x8282e7f0.
+//
+// Solidity: function getTaskStatus(uint32 taskIndex) view returns(uint8)
+func (_SumTask *SumTaskCaller) GetTaskStatus(opts *bind.CallOpts, taskIndex uint32) (uint8, error) {
+	var out []interface{}
+	err := _SumTask.contract.Call(opts, &out, "getTaskStatus", taskIndex)
+
+	if err != nil {
+		return *new(uint8), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+
+	return out0, err
+
+}
+
+// GetTaskStatus is a free data retrieval call binding the contract method 0x8282e7f0.
+//
+// Solidity: function getTaskStatus(uint32 taskIndex) view returns(uint8)
+func (_SumTask *SumTaskSession) GetTaskStatus(taskIndex uint32) (uint8, error) {
+	return _SumTask.Contract.GetTaskStatus(&_SumTask.CallOpts, taskIndex)
+}
+
+// GetTaskStatus is a free data retrieval call binding the contract method 0x8282e7f0.
+//
+// Solidity: function getTaskStatus(uint32 taskIndex) view returns(uint8)
+func (_SumTask *SumTaskCallerSession) GetTaskStatus(taskIndex uint32) (uint8, error) {
+	return _SumTask.Contract.GetTaskStatus(&_SumTask.CallOpts, taskIndex)
+}
+
+// IsTaskResponded is a free data retrieval call binding the contract method 0x667f0f29.
+//
+// Solidity: function isTaskResponded(uint32 ) view returns(bool)
+func (_SumTask *SumTaskCaller) IsTaskResponded(opts *bind.CallOpts, arg0 uint32) (bool, error) {
+	var out []interface{}
+	err := _SumTask.contract.Call(opts, &out, "isTaskResponded", arg0)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// IsTaskResponded is a free data retrieval call binding the contract method 0x667f0f29.
+//
+// Solidity: function isTaskResponded(uint32 ) view returns(bool)
+func (_SumTask *SumTaskSession) IsTaskResponded(arg0 uint32) (bool, error) {
+	return _SumTask.Contract.IsTaskResponded(&_SumTask.CallOpts, arg0)
+}
+
+// IsTaskResponded is a free data retrieval call binding the contract method 0x667f0f29.
+//
+// Solidity: function isTaskResponded(uint32 ) view returns(bool)
+func (_SumTask *SumTaskCallerSession) IsTaskResponded(arg0 uint32) (bool, error) {
+	return _SumTask.Contract.IsTaskResponded(&_SumTask.CallOpts, arg0)
+}
+
 // Settlement is a free data retrieval call binding the contract method 0x51160630.
 //
 // Solidity: function settlement() view returns(address)
@@ -369,21 +431,21 @@ func (_SumTask *SumTaskCallerSession) TasksCount() (uint32, error) {
 
 // CreateTask is a paid mutator transaction binding the contract method 0xe75b2378.
 //
-// Solidity: function createTask(uint256 numberA, uint256 numberB) returns()
+// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(uint32)
 func (_SumTask *SumTaskTransactor) CreateTask(opts *bind.TransactOpts, numberA *big.Int, numberB *big.Int) (*types.Transaction, error) {
 	return _SumTask.contract.Transact(opts, "createTask", numberA, numberB)
 }
 
 // CreateTask is a paid mutator transaction binding the contract method 0xe75b2378.
 //
-// Solidity: function createTask(uint256 numberA, uint256 numberB) returns()
+// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(uint32)
 func (_SumTask *SumTaskSession) CreateTask(numberA *big.Int, numberB *big.Int) (*types.Transaction, error) {
 	return _SumTask.Contract.CreateTask(&_SumTask.TransactOpts, numberA, numberB)
 }
 
 // CreateTask is a paid mutator transaction binding the contract method 0xe75b2378.
 //
-// Solidity: function createTask(uint256 numberA, uint256 numberB) returns()
+// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(uint32)
 func (_SumTask *SumTaskTransactorSession) CreateTask(numberA *big.Int, numberB *big.Int) (*types.Transaction, error) {
 	return _SumTask.Contract.CreateTask(&_SumTask.TransactOpts, numberA, numberB)
 }
