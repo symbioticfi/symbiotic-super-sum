@@ -83,9 +83,7 @@ contract SumTask {
 
         // verify the quorum signature
         bool isValid = settlement.verifyQuorumSigAt(
-            abi.encode(
-                keccak256(abi.encode(taskIndex, result))
-            ),
+            abi.encode(keccak256(abi.encode(taskIndex, result))),
             settlement.getRequiredKeyTagFromValSetHeaderAt(task.requiredEpoch),
             settlement.getQuorumThresholdFromValSetHeaderAt(task.requiredEpoch),
             proof,
