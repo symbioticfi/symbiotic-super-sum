@@ -174,7 +174,7 @@ services:
 
   # Genesis generation service
   genesis-generator:
-    image: symbiotic/relay:latest
+    image: symbioticfi/relay:latest
     container_name: symbiotic-genesis-generator
     volumes:
       - ../:/workspace
@@ -265,7 +265,7 @@ EOF
 
   # Relay sidecar $i ($role_name)
   relay-sidecar-$i:
-    image: symbiotic/relay:latest
+    image: symbioticfi/relay:latest
     container_name: symbiotic-relay-$i
     command: 
       - /workspace/network-scripts/sidecar-start.sh 
