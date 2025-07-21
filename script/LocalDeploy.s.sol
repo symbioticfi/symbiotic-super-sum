@@ -323,7 +323,8 @@ contract LocalDeploy is SymbioticCoreInit {
     }
 
     function printOperatorsInfo() public view {
-        console.log("Operators total:", votingPowers.getOperatorsLength());
+        address[] memory operators = votingPowers.getOperators();
+        console.log("Operators total:", operators.length);
         console.log("Operators:");
         VotingPowers.OperatorVotingPower[] memory operatorVPs = votingPowers.getVotingPowers(new bytes[](0));
 
