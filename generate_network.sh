@@ -359,13 +359,13 @@ main() {
     echo "  - temp-network/data-* (storage directories)"
     echo
     print_status "To start the network, run:"
-    echo "  cd temp-network && docker-compose up -d"
+    echo "  cd temp-network && docker compose up -d"
     echo
     print_status "To check the status, run:"
-    echo "  cd temp-network && docker-compose ps"
+    echo "  cd temp-network && docker compose ps"
     echo
     print_status "To view logs, run:"
-    echo "  cd temp-network && docker-compose logs -f"
+    echo "  cd temp-network && docker compose logs -f"
     echo
     print_status "For detailed instructions, see NETWORK_README.md"
     echo

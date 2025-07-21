@@ -75,6 +75,8 @@ rm -rf data-*
 
 ## Testing
 
+You can get the sum contract address inside `temp-network/deploy-data/sumtask_address.txt` ideally it should be `0x0E801D84Fa97b50751Dbf25036d067dCf18858bF` but re-runs/restarts can cause the address to change.
+
 ### Create a task
 ```bash
 cast send 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF "createTask(uint256,uint256)" 2 2 \
