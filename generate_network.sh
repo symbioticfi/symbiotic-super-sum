@@ -1,0 +1,380 @@
+#!/bin/bash
+
+# Symbiotic Network Generator
+# This script generates a Docker Compose setup for a local blockchain network
+# with configurable number of operators, commiters, and aggregators
+
+set -e
+
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# Default values
+DEFAULT_OPERATORS=4
+DEFAULT_COMMITERS=1
+DEFAULT_AGGREGATORS=1
+MAX_OPERATORS=999
+
+
+print_status() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+print_header() {
+    echo -e "${BLUE}================================${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}================================${NC}"
+}
+
+
+validate_number() {
+    local num=$1
+    local name=$2
+    if ! [[ "$num" =~ ^[0-9]+$ ]] || [ "$num" -lt 1 ]; then
+        print_error "$name must be a positive integer"
+        exit 1
+    fi
+}
+
+get_user_input() {
+    echo
+    print_header "Symbiotic Network Configuration"
+    echo
+    
+    read -p "Enter number of operators (default: $DEFAULT_OPERATORS, max: $MAX_OPERATORS): " operators
+    operators=${operators:-$DEFAULT_OPERATORS}
+    validate_number "$operators" "Number of operators"
+    
+    read -p "Enter number of commiters (default: $DEFAULT_COMMITERS): " commiters
+    commiters=${commiters:-$DEFAULT_COMMITERS}
+    validate_number "$commiters" "Number of commiters"
+    
+    read -p "Enter number of aggregators (default: $DEFAULT_AGGREGATORS): " aggregators
+    aggregators=${aggregators:-$DEFAULT_AGGREGATORS}
+    validate_number "$aggregators" "Number of aggregators"
+    
+    # Validate that commiters + aggregators <= operators
+    total_special_roles=$((commiters + aggregators))
+    if [ "$total_special_roles" -gt "$operators" ]; then
+        print_error "Total commiters ($commiters) + aggregators ($aggregators) cannot exceed total operators ($operators)"
+        exit 1
+    fi
+    
+    if [ "$operators" -gt $MAX_OPERATORS ]; then
+        print_error "Maximum $MAX_OPERATORS operators supported. Requested: $operators"
+        exit 1
+    fi
+    
+    print_status "Configuration:"
+    print_status "  Operators: $operators"
+    print_status "  Committers: $commiters"
+    print_status "  Aggregators: $aggregators"
+    print_status "  Regular signers: $((operators - total_special_roles))"
+}
+
+create_funded_accounts() {
+    local count=$1
+    local keys=()
+    
+    # Generate deterministic private keys for all operators
+    for i in $(seq 0 $((count - 1))); do
+        # Generate a deterministic private key
+        local seed="operator_$i"
+        local private_key=$(echo -n "$seed" | sha256sum | cut -d' ' -f1)
+        keys+=("$private_key")
+    done
+    
+    echo "${keys[@]}"
+}
+
+generate_private_keys() {
+    local count=$1
+    create_funded_accounts "$count"
+}
+
+# Function to generate Docker Compose file
+generate_docker_compose() {
+    local operators=$1
+    local commiters=$2
+    local aggregators=$3
+    
+    local network_dir="temp-network"
+    
+    if [ -d "$network_dir" ]; then
+        print_status "Cleaning up existing $network_dir directory..."
+        rm -rf "$network_dir"
+    fi
+    
+    mkdir -p "$network_dir"
+    mkdir -p "$network_dir/deploy-data"
+    
+    for i in $(seq 1 $operators); do
+        local storage_dir="$network_dir/data-$(printf "%02d" $i)"
+        mkdir -p "$storage_dir"
+        # Make sure the directory is writable
+        chmod 777 "$storage_dir"
+    done
+    
+    local keys=($(generate_private_keys $operators))
+    
+
+    local anvil_port=8545
+    local relay_start_port=8081
+    local sum_start_port=9091
+    
+    cat > "$network_dir/docker-compose.yml" << EOF
+services:
+  # Anvil local Ethereum network
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: symbiotic-anvil
+    command: "anvil --port 8545 --auto-impersonate --slots-in-an-epoch 1 --accounts 10 --balance 10000 --gas-limit 30000000"
+    environment:
+      - ANVIL_IP_ADDR=0.0.0.0
+    ports:
+      - "8545:8545"
+    networks:
+      - symbiotic-network
+    healthcheck:
+      test: ["CMD", "cast", "client", "--rpc-url", "http://localhost:8545"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Contract deployment service
+  deployer:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: symbiotic-deployer
+    volumes:
+      - ../:/app
+      - ../cache:/app/cache
+      - ../broadcast:/app/broadcast
+      - ./deploy-data:/deploy-data
+    working_dir: /app
+    command: ./network-scripts/deploy.sh
+    depends_on:
+      anvil:
+        condition: service_healthy
+    networks:
+      - symbiotic-network
+    environment:
+      - OPERATOR_COUNT=$operators
+
+  # Genesis generation service
+  genesis-generator:
+    image: symbiotic/relay:latest
+    container_name: symbiotic-genesis-generator
+    volumes:
+      - ../:/workspace
+      - ./deploy-data:/deploy-data
+    working_dir: /workspace
+    command: ./network-scripts/genesis-generator.sh
+    depends_on:
+      deployer:
+        condition: service_completed_successfully
+    networks:
+      - symbiotic-network
+
+  # Network validator - ensures deployment and genesis are complete
+  # This container acts as a dependency checkpoint for relay and sum nodes
+  network-validator:
+    image: alpine:latest
+    container_name: symbiotic-network-validator
+    volumes:
+      - ./deploy-data:/deploy-data
+    command: >
+      sh -c "
+        echo 'Validating network setup...';
+        
+        # Wait for deployment completion marker
+        echo 'Waiting for deployment completion...';
+        while [ ! -f /deploy-data/deployment-complete.marker ]; do
+          sleep 2;
+        done;
+        
+        # Wait for genesis completion marker  
+        echo 'Waiting for genesis completion...';
+        while [ ! -f /deploy-data/genesis-complete.marker ]; do
+          sleep 2;
+        done;
+        
+        echo 'Network setup validation complete!';
+        echo 'Ready marker created at' \$(date);
+        touch /deploy-data/network-ready.marker;
+        
+        # Keep container running to serve as dependency
+        tail -f /dev/null
+      "
+    networks:
+      - symbiotic-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "test", "-f", "/deploy-data/network-ready.marker"]
+      interval: 60s
+      timeout: 3s
+      retries: 10
+
+EOF
+
+    local committer_count=0
+    local aggregator_count=0
+    local signer_count=0
+    
+    # Calculate symb private key properly
+    BASE_PRIVATE_KEY=1000000000000000000
+
+    for i in $(seq 1 $operators); do
+        local port=$((relay_start_port + i - 1))
+        local storage_dir="data-$(printf "%02d" $i)"
+        local key_index=$((i - 1))
+        local private_key="${keys[$key_index]}"
+        
+        # Determine role for this operator
+        local role_flags=""
+        local role_name="signer"
+        
+        if [ $committer_count -lt $commiters ]; then
+            role_flags="--committer true"
+            role_name="committer"
+            committer_count=$((committer_count + 1))
+        elif [ $aggregator_count -lt $aggregators ]; then
+            role_flags="--aggregator true"
+            role_name="aggregator"
+            aggregator_count=$((aggregator_count + 1))
+        else
+            role_flags="--signer true"
+            signer_count=$((signer_count + 1))
+        fi
+        
+        SYMB_PRIVATE_KEY_DECIMAL=$(($BASE_PRIVATE_KEY + $key_index))
+        SYMB_PRIVATE_KEY_HEX=$(printf "%x" $SYMB_PRIVATE_KEY_DECIMAL)
+        
+        cat >> "$network_dir/docker-compose.yml" << EOF
+
+  # Relay sidecar $i ($role_name)
+  relay-sidecar-$i:
+    image: symbiotic/relay:latest
+    container_name: symbiotic-relay-$i
+    command: 
+      - /workspace/network-scripts/sidecar-start.sh 
+      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/$private_key
+      - :8080 
+      - /app/$storage_dir
+      - $role_flags
+    ports:
+      - "$port:8080"
+    volumes:
+      - ../:/workspace
+      - ./$storage_dir:/app/$storage_dir
+      - ./deploy-data:/deploy-data
+    depends_on:
+      network-validator:
+        condition: service_healthy
+    networks:
+      - symbiotic-network
+    restart: unless-stopped
+
+EOF
+    done
+    
+    for i in $(seq 1 $operators); do
+        local relay_port=$((relay_start_port + i - 1))
+        local sum_port=$((sum_start_port + i - 1))
+        local key_index=$((i - 1))
+        local private_key="${keys[$key_index]}"
+        
+        cat >> "$network_dir/docker-compose.yml" << EOF
+
+  # Sum node $i
+  sum-node-$i:
+    build:
+      context: ../off-chain
+      dockerfile: Dockerfile
+    container_name: symbiotic-sum-node-$i
+    entrypoint: ["/workspace/network-scripts/sum-node-start.sh"]
+    command: ["http://relay-sidecar-$i:8080/api/v1", "$private_key"]
+    volumes:
+      - ../:/workspace
+      - ./deploy-data:/deploy-data
+    ports:
+      - "$sum_port:8080"
+    depends_on:
+      relay-sidecar-$i:
+        condition: service_started
+    networks:
+      - symbiotic-network
+    restart: unless-stopped
+
+EOF
+    done
+    
+    cat >> "$network_dir/docker-compose.yml" << EOF
+
+networks:
+  symbiotic-network:
+    driver: bridge
+
+EOF
+}
+
+
+# Main execution
+main() {
+    print_header "Symbiotic Network Generator"
+    
+    # Check if required tools are available
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+        print_error "Docker Compose is not installed or not in PATH"
+        exit 1
+    fi
+    
+    get_user_input
+    
+
+    print_status "Generating Docker Compose configuration..."
+    print_status "Creating $operators new operator accounts..."
+    generate_docker_compose "$operators" "$commiters" "$aggregators"
+    
+    print_header "Setup Complete!"
+    echo
+    print_status "Files generated in temp-network/ directory:"
+    echo "  - temp-network/docker-compose.yml"
+    echo "  - temp-network/data-* (storage directories)"
+    echo
+    print_status "To start the network, run:"
+    echo "  cd temp-network && docker-compose up -d"
+    echo
+    print_status "To check the status, run:"
+    echo "  cd temp-network && docker-compose ps"
+    echo
+    print_status "To view logs, run:"
+    echo "  cd temp-network && docker-compose logs -f"
+    echo
+    print_status "For detailed instructions, see NETWORK_README.md"
+    echo
+    print_warning "Note: The first startup may take several minutes(2-4mins) as it needs to:"
+    echo "  1. Download Docker images"
+    echo "  2. Build the sum-node image"
+    echo "  3. Deploy contracts"
+    echo "  4. Generate network genesis and fund operators"
+    echo
+}
+
+main "$@" 

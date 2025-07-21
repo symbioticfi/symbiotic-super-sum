@@ -14,3 +14,6 @@ docs/
 .env
 
 .idea
+
+# Network generated files
+temp-network/
