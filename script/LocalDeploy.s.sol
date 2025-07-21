@@ -22,12 +22,12 @@ import {IVotingPowerProvider} from
 import {IOpNetVaultAutoDeploy} from
     "@symbioticfi/relay-contracts/interfaces/modules/voting-power/extensions/IOpNetVaultAutoDeploy.sol";
 import {SigVerifierBlsBn254Simple} from
-    "@symbioticfi/relay-contracts/modules/settlement/sig-verifiers/SigVerifierBlsBn254Simple.sol";
+    "@symbioticfi/relay-contracts/contracts/modules/settlement/sig-verifiers/SigVerifierBlsBn254Simple.sol";
 import {ISettlement} from "@symbioticfi/relay-contracts/interfaces/modules/settlement/ISettlement.sol";
 import {IOzOwnable} from "@symbioticfi/relay-contracts/interfaces/modules/common/permissions/IOzOwnable.sol";
 import {IOzEIP712} from "@symbioticfi/relay-contracts/interfaces/modules/base/IOzEIP712.sol";
-import {KeyTags} from "@symbioticfi/relay-contracts/libraries/utils/KeyTags.sol";
-import {KeyBlsBn254, BN254} from "@symbioticfi/relay-contracts/libraries/keys/KeyBlsBn254.sol";
+import {KeyTags} from "@symbioticfi/relay-contracts/contracts/libraries/utils/KeyTags.sol";
+import {KeyBlsBn254, BN254} from "@symbioticfi/relay-contracts/contracts/libraries/keys/KeyBlsBn254.sol";
 import {
     KEY_TYPE_BLS_BN254,
     KEY_TYPE_ECDSA_SECP256K1
@@ -148,7 +148,7 @@ contract LocalDeploy is SymbioticCoreInit {
                 IVotingPowerProvider.VotingPowerProviderInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
                         network: address(network),
-                        subnetworkId: 0
+                        subnetworkID: 0
                     }),
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "VotingPowers", version: "1"}),
                     slashingWindow: SLASHING_WINDOW,
@@ -201,7 +201,7 @@ contract LocalDeploy is SymbioticCoreInit {
                 ISettlement.SettlementInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
                         network: address(network),
-                        subnetworkId: 0
+                        subnetworkID: 0
                     }),
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "Settlement", version: "1"}),
                     sigVerifier: address(new SigVerifierBlsBn254Simple())
@@ -228,7 +228,7 @@ contract LocalDeploy is SymbioticCoreInit {
                 IValSetDriver.ValSetDriverInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
                         network: address(network),
-                        subnetworkId: 0
+                        subnetworkID: 0
                     }),
                     epochManagerInitParams: IEpochManager.EpochManagerInitParams({
                         epochDuration: EPOCH_DURATION,
@@ -334,8 +334,8 @@ contract LocalDeploy is SymbioticCoreInit {
             console.log("   Vaults:");
             for (uint256 j = 0; j < operatorVPs[i].vaults.length; j++) {
                 console.log("       Address:", operatorVPs[i].vaults[j].vault);
-                console.log("       Voting power:", operatorVPs[i].vaults[j].value);
-                totalVotingPower += operatorVPs[i].vaults[j].value;
+                console.log("       Voting power:", operatorVPs[i].vaults[j].votingPower);
+                totalVotingPower += operatorVPs[i].vaults[j].votingPower;
             }
             console.log("   Total voting power:", totalVotingPower);
         }
