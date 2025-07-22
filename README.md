@@ -12,6 +12,19 @@
 git submodule update --init --recursive
 ```
 
+## Download circuits
+
+```bash
+brew install git-lfs # if not installed git-lfs
+git lfs install
+```
+
+```bash
+cd circuits
+git lfs pull --include="circuit_10.pk,circuit_10.r1cs,circuit_10.vk"
+cd ..
+```
+
 ### Build contracts
 
 ```bash
