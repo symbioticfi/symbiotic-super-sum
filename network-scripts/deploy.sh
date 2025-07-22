@@ -27,6 +27,9 @@ done
 echo "Setting interval mining..."
 cast rpc --rpc-url http://anvil:8545 evm_setIntervalMining 1
 
+echo "Jumping ahead of time (+120 seconds)"
+cast rpc --rpc-url http://anvil:8545 evm_increaseTime 120
+
 echo "Deployment completed successfully!"
 
 # Create deployment completion marker

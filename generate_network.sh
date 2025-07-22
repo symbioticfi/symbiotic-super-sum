@@ -138,9 +138,10 @@ generate_docker_compose() {
 services:
   # Anvil local Ethereum network
   anvil:
-    image: ghcr.io/foundry-rs/foundry:latest
+    image: ghcr.io/foundry-rs/foundry:v1.2.3
     container_name: symbiotic-anvil
-    command: "anvil --port 8545 --auto-impersonate --slots-in-an-epoch 1 --accounts 10 --balance 10000 --gas-limit 30000000"
+    entrypoint: ["anvil"]
+    command: "--port 8545 --auto-impersonate --slots-in-an-epoch 1 --accounts 10 --balance 10000 --gas-limit 30000000"
     environment:
       - ANVIL_IP_ADDR=0.0.0.0
     ports:
@@ -149,13 +150,13 @@ services:
       - symbiotic-network
     healthcheck:
       test: ["CMD", "cast", "client", "--rpc-url", "http://localhost:8545"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 2s
+      timeout: 1s
+      retries: 10
 
   # Contract deployment service
   deployer:
-    image: ghcr.io/foundry-rs/foundry:latest
+    image: ghcr.io/foundry-rs/foundry:v1.2.3
     container_name: symbiotic-deployer
     volumes:
       - ../:/app
@@ -186,45 +187,6 @@ services:
         condition: service_completed_successfully
     networks:
       - symbiotic-network
-
-  # Network validator - ensures deployment and genesis are complete
-  # This container acts as a dependency checkpoint for relay and sum nodes
-  network-validator:
-    image: alpine:latest
-    container_name: symbiotic-network-validator
-    volumes:
-      - ./deploy-data:/deploy-data
-    command: >
-      sh -c "
-        echo 'Validating network setup...';
-        
-        # Wait for deployment completion marker
-        echo 'Waiting for deployment completion...';
-        while [ ! -f /deploy-data/deployment-complete.marker ]; do
-          sleep 2;
-        done;
-        
-        # Wait for genesis completion marker  
-        echo 'Waiting for genesis completion...';
-        while [ ! -f /deploy-data/genesis-complete.marker ]; do
-          sleep 2;
-        done;
-        
-        echo 'Network setup validation complete!';
-        echo 'Ready marker created at' \$(date);
-        touch /deploy-data/network-ready.marker;
-        
-        # Keep container running to serve as dependency
-        tail -f /dev/null
-      "
-    networks:
-      - symbiotic-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "test", "-f", "/deploy-data/network-ready.marker"]
-      interval: 60s
-      timeout: 3s
-      retries: 10
 
 EOF
 
@@ -280,8 +242,8 @@ EOF
       - ./$storage_dir:/app/$storage_dir
       - ./deploy-data:/deploy-data
     depends_on:
-      network-validator:
-        condition: service_healthy
+      genesis-generator:
+        condition: service_completed_successfully
     networks:
       - symbiotic-network
     restart: unless-stopped
