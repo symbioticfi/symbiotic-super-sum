@@ -52,6 +52,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return errors.Errorf("failed to run processes: %w", err)
 	}
+	defer prs.stopProcesses()
 
 	if err := sendRequestAndWait(ctx, prs, numberOfSignRequests); err != nil {
 		return errors.Errorf("failed to send request and wait: %w", err)
@@ -65,8 +66,6 @@ func run(ctx context.Context) error {
 		slog.Info("Context done, stopping processes")
 		break
 	}
-
-	prs.stopProcesses()
 
 	return nil
 }
@@ -195,18 +194,25 @@ func runProcesses(ctx context.Context, runSeparately bool) (processes, error) {
 }
 
 func (prs processes) waitServerStarted(ctx context.Context) {
-	for i := 0; i < 10; i++ {
-		allStarted := true
+	var startedCound int
+
+	for i := 0; i < 100; i++ {
+		startedCound = 0
 		for _, pr := range prs {
-			if !strings.Contains(pr.stdOut.String(), "Starting API server") {
-				allStarted = false
-				break
+			if strings.Contains(pr.stdOut.String(), "All missing epochs loaded") {
+				startedCound++
 			}
 		}
-		if allStarted {
+		if startedCound == len(prs) {
 			break
 		}
+		slog.Info("Not all processes started successfully, retrying...", "attempt", i+1, "startedCount", startedCound, "totalCount", len(prs))
+
 		time.Sleep(time.Second)
+	}
+	if startedCound != len(prs) {
+		prs.printErrLogs()
+		panic("Not all processes started successfully. Check logs for details.")
 	}
 	slog.InfoContext(ctx, "All processes started", "count", len(prs))
 }
@@ -268,4 +274,15 @@ func randomMessage(n int) []byte {
 		panic(fmt.Sprintf("failed to generate random bytes: %v", err))
 	}
 	return b
+}
+
+func (prs processes) printErrLogs() {
+	for _, pr := range prs {
+		if pr.stdErr.Len() > 0 {
+			slog.Error("Process stderr", "pid", pr.cmd.Process.Pid, "stderr", pr.stdErr.String())
+		}
+		if pr.stdOut.Len() > 0 {
+			slog.Info("Process stdout", "pid", pr.cmd.Process.Pid, "stdout", pr.stdOut.String())
+		}
+	}
 }
