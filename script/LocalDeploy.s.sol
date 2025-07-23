@@ -81,7 +81,6 @@ contract LocalDeploy is SymbioticCoreInit {
         deployer = getDeployerAddress();
 
         SYMBIOTIC_CORE_PROJECT_ROOT = "lib/core-contracts/";
-        SYMBIOTIC_CORE_OWNER = deployer;
 
         setupCore();
         setupRelayContracts();

@@ -1,16 +1,15 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
-[submodule "lib/core-contracts"]
-	path = lib/core-contracts
-	url = https://github.com/symbioticfi/core
-	branch = feat-deterministic-local-deployment
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
 [submodule "lib/relay-contracts"]
 	path = lib/relay-contracts
 	url = https://github.com/symbioticfi/relay-contracts
+[submodule "lib/core-contracts"]
+	path = lib/core-contracts
+	url = https://github.com/symbioticfi/core
 [submodule "circuits"]
 	path = circuits
-	url = git@github.com:symbioticfi/relay-bn254-example-circuit-keys.git
+	url = https://github.com/symbioticfi/relay-bn254-example-circuit-keys
