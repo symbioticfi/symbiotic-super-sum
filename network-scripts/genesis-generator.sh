@@ -7,11 +7,9 @@ until [ -f /deploy-data/driver_address.txt ]; do sleep 2; done
 
 DRIVER_ADDRESS=$(cat /deploy-data/driver_address.txt)
 echo "Driver address: $DRIVER_ADDRESS"
-echo 'Generating network genesis...Wait for chain/contracts to stabilize(60s)'
-sleep 60
 
-MAX_RETRIES=5
-RETRY_DELAY=15
+MAX_RETRIES=50
+RETRY_DELAY=2
 attempt=1
 
 while [ $attempt -le $MAX_RETRIES ]; do
@@ -23,6 +21,9 @@ while [ $attempt -le $MAX_RETRIES ]; do
         # Create genesis completion marker
         echo "$(date): Genesis generation completed successfully" > /deploy-data/genesis-complete.marker
         echo "Genesis completion marker created"
+
+        echo "Waiting few seconds before exiting..."
+        sleep 5
         
         exit 0
     else

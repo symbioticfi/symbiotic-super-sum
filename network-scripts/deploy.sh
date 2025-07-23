@@ -15,17 +15,11 @@ echo "$SUMTASK_ADDRESS" > /deploy-data/sumtask_address.txt
 echo "Driver address saved: $DRIVER_ADDRESS"
 echo "SumTask address saved: $SUMTASK_ADDRESS"
 
-echo "Funding all operator accounts..."
-for i in $(seq 0 $((OPERATOR_COUNT - 1))); do
-  seed="operator_$i"
-  private_key=$(echo -n "$seed" | sha256sum | cut -d' ' -f1)
-  address=$(cast wallet address --private-key $private_key)
-  echo "Funding operator $i: $address"
-  cast send --value 1ether --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 $address --rpc-url http://anvil:8545
-done
-
 echo "Setting interval mining..."
 cast rpc --rpc-url http://anvil:8545 evm_setIntervalMining 1
+
+echo "Jumping ahead of time (+120 seconds)"
+cast rpc --rpc-url http://anvil:8545 evm_increaseTime 120
 
 echo "Deployment completed successfully!"
 
