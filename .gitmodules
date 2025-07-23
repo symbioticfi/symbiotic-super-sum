@@ -13,6 +13,3 @@
 [submodule "lib/core-contracts"]
 	path = lib/core-contracts
 	url = https://github.com/symbioticfi/core
-[submodule "lib/circuits"]
-	path = lib/circuits
-	url = https://github.com/symbioticfi/relay-bn254-example-circuit-keys
