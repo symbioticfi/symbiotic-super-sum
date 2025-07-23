@@ -7,9 +7,9 @@
 [submodule "lib/relay-contracts"]
 	path = lib/relay-contracts
 	url = https://github.com/symbioticfi/relay-contracts
-[submodule "circuits"]
-	path = circuits
-	url = git@github.com:symbioticfi/relay-bn254-example-circuit-keys.git
 [submodule "lib/core-contracts"]
 	path = lib/core-contracts
 	url = https://github.com/symbioticfi/core
+[submodule "circuits"]
+	path = circuits
+	url = https://github.com/symbioticfi/relay-bn254-example-circuit-keys
