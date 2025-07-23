@@ -1,5 +1,37 @@
 # Sum task network example
 
+## Prerequisites
+
+### Clone the repository
+
+```bash
+git clone https://github.com/symbioticfi/symbiotic-super-sum.git
+```
+
+### Install submodules
+
+Install Git LFS
+
+- macOS:
+
+  ```bash
+  brew install git-lfs
+  git lfs install
+  ```
+
+- Debian/Ubuntu:
+
+  ```bash
+  sudo apt update && sudo apt install git-lfs
+  git lfs install
+  ```
+
+Update submodules
+
+```bash
+git submodule update --init --recursive
+```
+
 ## Running in docker
 
 ### Dependencies
@@ -17,12 +49,12 @@
 2. **Start the network:**
 
    ```bash
-   cd temp-network && docker compose up -d
+   cd temp-network && docker compose up -d && cd ..
    ```
 
 3. **Check status:**
    ```bash
-   cd temp-network && docker compose ps
+   cd temp-network && docker compose ps && cd ..
    ```
 
 ### Services
@@ -49,13 +81,13 @@
 ### Start the network
 
 ```bash
-cd temp-network && docker compose up -d
+cd temp-network && docker compose up -d && cd ..
 ```
 
 ### Check status
 
 ```bash
-cd temp-network && docker compose ps
+cd temp-network && docker compose ps && cd ..
 ```
 
 ### View logs
@@ -66,8 +98,8 @@ cd temp-network && docker compose logs -f
 
 # View specific service logs
 cd temp-network && docker compose logs -f anvil
-cd temp-network && docker compose logs -f deployer
-cd temp-network && docker compose logs -f genesis-generator
+cd temp-network && docker compose logs -f deployer && cd ..
+cd temp-network && docker compose logs -f genesis-generator && cd ..
 cd temp-network && docker compose logs -f relay-sidecar-1
 cd temp-network && docker compose logs -f sum-node-1
 ```
@@ -75,14 +107,14 @@ cd temp-network && docker compose logs -f sum-node-1
 ### Stop the network
 
 ```bash
-cd temp-network && docker compose down
+cd temp-network && docker compose down && cd ..
 ```
 
 ### Clean up data
 
 ```bash
 cd temp-network && docker compose down
-rm -rf data-*
+rm -rf data-* && cd ..
 ```
 
 ### Create a task
@@ -104,8 +136,8 @@ cast call 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF "allTaskResults(uint32)" 0 
 
 1. **Services not starting**: Check logs with `cd temp-network && docker compose logs [service-name]`
 2. **Port conflicts**: Ensure ports 8545, 8081-8099, 9091-9099 are available
-3. **Build issues**: Rebuild with `cd temp-network && docker compose build`
-4. **Reset everything**: `cd temp-network && docker compose down -v && rm -rf data-* && docker compose up -d`
+3. **Build issues**: Rebuild with `cd temp-network && docker compose build && cd ..`
+4. **Reset everything**: `cd temp-network && docker compose down -v && rm -rf data-* && docker compose up -d && cd ..`
 
 ### Service Endpoints
 
@@ -153,25 +185,6 @@ docker stats symbiotic-anvil symbiotic-relay-1 symbiotic-sum-node-1
 - golang >= v1.25.5
 - foundry, installation [guide](https://getfoundry.sh/introduction/installation/)
 
-### Install contracts dependencies
-
-```bash
-git submodule update --init --recursive
-```
-
-### Download circuits
-
-```bash
-brew install git-lfs # if not installed git-lfs
-git lfs install
-```
-
-```bash
-cd circuits
-git lfs pull --include="circuit_10.pk,circuit_10.r1cs,circuit_10.vk"
-cd ..
-```
-
 ### Build contracts
 
 ```bash
@@ -206,10 +219,16 @@ Note: By default anvil is using on-demand mining which is not compatible with re
 ### Set network genesis
 
 ```bash
-./bin/symbiotic_relay_utils network generate-genesis --chains http://127.0.0.1:8545 --driver-address 0x4826533B4897376654Bb4d4AD88B7faFD0C98528 --driver-chainid 31337 --commit --secret-keys 31337:ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+./bin/symbiotic_relay_utils network \
+    --chains http://127.0.0.1:8545 \
+    --driver-address 0x4826533B4897376654Bb4d4AD88B7faFD0C98528 \
+    --driver-chainid 31337 \
+  generate-genesis \
+    --commit \
+    --secret-keys 31337:ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-Note: if it's failing try again in 5 seconds
+Note: If it's failing try again in 5 seconds
 
 ### Run relay sidecar nodes
 
@@ -242,7 +261,7 @@ Sidecar 3 (Signer + Committer):
     --committer true
 ```
 
-Note: it's enough to run only 3 out 4 nodes since quorum threshold is 2/3+1
+Note: It's enough to run only 3 out 4 nodes since quorum threshold is 2/3+1
 
 ### Build sum node
 
@@ -287,7 +306,7 @@ Node 3 (connected with sidecar 3):
 cast send 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF "createTask(uint256,uint256)" 2 2  --rpc-url http://127.0.0.1:8545 --private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-Note: it creates task to sum 2+2, in sum and sidecar nodes you can see related logs
+Note: It creates task to sum 2+2, in sum and sidecar nodes you can see related logs
 
 ### Check task result
 
@@ -297,4 +316,4 @@ Don't forget to replace `{TASK_ID}`, it's sequential and starts with 0
 cast call 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF "allTaskResults(uint32)" {TASK_ID} --rpc-url http://127.0.0.1:8545
 ```
 
-Note: it prints result in hex, results also might be found in sum node logs
+Note: It prints result in hex, results also might be found in sum node logs

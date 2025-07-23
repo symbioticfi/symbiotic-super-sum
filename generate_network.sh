@@ -302,15 +302,13 @@ main() {
     echo "  - temp-network/data-* (storage directories)"
     echo
     print_status "To start the network, run:"
-    echo "  cd temp-network && docker compose up -d"
+    echo "  cd temp-network && docker compose up -d && cd .."
     echo
     print_status "To check the status, run:"
-    echo "  cd temp-network && docker compose ps"
+    echo "  cd temp-network && docker compose ps && cd .."
     echo
     print_status "To view logs, run:"
     echo "  cd temp-network && docker compose logs -f"
-    echo
-    print_status "For detailed instructions, see NETWORK_README.md"
     echo
     print_warning "Note: The first startup may take several minutes(2-4mins) as it needs to:"
     echo "  1. Download Docker images"
