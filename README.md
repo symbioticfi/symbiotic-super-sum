@@ -2,7 +2,7 @@
 
 ## Running in docker
 
-## Dependencies
+### Dependencies
 - Docker
 
 ### Quick Start
