@@ -84,26 +84,6 @@ get_user_input() {
     print_status "  Regular signers: $((operators - total_special_roles))"
 }
 
-create_funded_accounts() {
-    local count=$1
-    local keys=()
-    
-    # Generate deterministic private keys for all operators
-    for i in $(seq 0 $((count - 1))); do
-        # Generate a deterministic private key
-        local seed="operator_$i"
-        local private_key=$(echo -n "$seed" | sha256sum | cut -d' ' -f1)
-        keys+=("$private_key")
-    done
-    
-    echo "${keys[@]}"
-}
-
-generate_private_keys() {
-    local count=$1
-    create_funded_accounts "$count"
-}
-
 # Function to generate Docker Compose file
 generate_docker_compose() {
     local operators=$1
@@ -126,9 +106,6 @@ generate_docker_compose() {
         # Make sure the directory is writable
         chmod 777 "$storage_dir"
     done
-    
-    local keys=($(generate_private_keys $operators))
-    
 
     local anvil_port=8545
     local relay_start_port=8081
@@ -195,13 +172,14 @@ EOF
     local signer_count=0
     
     # Calculate symb private key properly
+    # ECDSA secp256k1 private keys must be 32 bytes (64 hex chars) and within range [1, n-1]
+    # where n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
     BASE_PRIVATE_KEY=1000000000000000000
 
     for i in $(seq 1 $operators); do
         local port=$((relay_start_port + i - 1))
         local storage_dir="data-$(printf "%02d" $i)"
         local key_index=$((i - 1))
-        local private_key="${keys[$key_index]}"
         
         # Determine role for this operator
         local role_flags=""
@@ -221,7 +199,14 @@ EOF
         fi
         
         SYMB_PRIVATE_KEY_DECIMAL=$(($BASE_PRIVATE_KEY + $key_index))
-        SYMB_PRIVATE_KEY_HEX=$(printf "%x" $SYMB_PRIVATE_KEY_DECIMAL)
+        SYMB_PRIVATE_KEY_HEX=$(printf "%064x" $SYMB_PRIVATE_KEY_DECIMAL)
+        
+        # Validate ECDSA secp256k1 private key range (must be between 1 and n-1)
+        # Maximum valid key: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
+        if [ $SYMB_PRIVATE_KEY_DECIMAL -eq 0 ]; then
+            echo "ERROR: Generated private key is zero (invalid for ECDSA)"
+            exit 1
+        fi
         
         cat >> "$network_dir/docker-compose.yml" << EOF
 
@@ -231,7 +216,7 @@ EOF
     container_name: symbiotic-relay-$i
     command: 
       - /workspace/network-scripts/sidecar-start.sh 
-      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/$private_key
+      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/0x$SYMB_PRIVATE_KEY_HEX
       - :8080 
       - /app/$storage_dir
       - $role_flags
@@ -249,13 +234,9 @@ EOF
     restart: unless-stopped
 
 EOF
-    done
-    
-    for i in $(seq 1 $operators); do
+
         local relay_port=$((relay_start_port + i - 1))
         local sum_port=$((sum_start_port + i - 1))
-        local key_index=$((i - 1))
-        local private_key="${keys[$key_index]}"
         
         cat >> "$network_dir/docker-compose.yml" << EOF
 
@@ -266,7 +247,7 @@ EOF
       dockerfile: Dockerfile
     container_name: symbiotic-sum-node-$i
     entrypoint: ["/workspace/network-scripts/sum-node-start.sh"]
-    command: ["http://relay-sidecar-$i:8080/api/v1", "$private_key"]
+    command: ["http://relay-sidecar-$i:8080/api/v1", "$SYMB_PRIVATE_KEY_HEX"]
     volumes:
       - ../:/workspace
       - ./deploy-data:/deploy-data
