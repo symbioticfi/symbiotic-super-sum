@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import {OzAccessControl} from "@symbioticfi/relay-contracts/contracts/modules/common/permissions/OzAccessControl.sol";
 import {Settlement as SymbioticSettlement} from
     "@symbioticfi/relay-contracts/contracts/modules/settlement/Settlement.sol";
-import {OzAccessControl} from "@symbioticfi/relay-contracts/contracts/modules/common/permissions/OzAccessControl.sol";
 
 contract Settlement is SymbioticSettlement, OzAccessControl {
     function initialize(SettlementInitParams memory settlementInitParams, address defaultAdmin)

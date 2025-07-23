@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {VotingPowerProvider} from "@symbioticfi/relay-contracts/contracts/modules/voting-power/VotingPowerProvider.sol";
-import {OzOwnable} from "@symbioticfi/relay-contracts/contracts/modules/common/permissions/OzOwnable.sol";
 import {EqualStakeVPCalc} from
     "@symbioticfi/relay-contracts/contracts/modules/voting-power/common/voting-power-calc/EqualStakeVPCalc.sol";
-import {OperatorVaults} from "@symbioticfi/relay-contracts/contracts/modules/voting-power/extensions/OperatorVaults.sol";
 import {OpNetVaultAutoDeploy} from
     "@symbioticfi/relay-contracts/contracts/modules/voting-power/extensions/OpNetVaultAutoDeploy.sol";
+import {OzOwnable} from "@symbioticfi/relay-contracts/contracts/modules/common/permissions/OzOwnable.sol";
+import {VotingPowerProvider} from "@symbioticfi/relay-contracts/contracts/modules/voting-power/VotingPowerProvider.sol";
 
 contract VotingPowers is VotingPowerProvider, OzOwnable, EqualStakeVPCalc, OpNetVaultAutoDeploy {
     constructor(address operatorRegistry, address vaultFactory, address vaultConfigurator)
