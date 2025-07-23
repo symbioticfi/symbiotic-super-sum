@@ -159,7 +159,7 @@ docker stats symbiotic-anvil symbiotic-relay-1 symbiotic-sum-node-1
 git submodule update --init --recursive
 ```
 
-## Download circuits
+### Download circuits
 
 ```bash
 brew install git-lfs # if not installed git-lfs
