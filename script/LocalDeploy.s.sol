@@ -59,7 +59,7 @@ contract LocalDeploy is SymbioticCoreInit {
     uint248 public constant QUORUM_THRESHOLD = uint248(1e18) * 2 / 3 + 1; // 2/3 + 1
     uint8 public constant REQUIRED_KEY_TAG = 15; // 15 is the default key tag (BLS-BN254/15)
     uint256 public constant OPERATOR_STAKE_AMOUNT = 100000;
-    uint256 public constant OPERATOR_COUNT = 4;
+    uint256 public immutable OPERATOR_COUNT = vm.envOr("OPERATOR_COUNT", uint256(4));
 
     address deployer;
 
@@ -232,7 +232,7 @@ contract LocalDeploy is SymbioticCoreInit {
                     }),
                     epochManagerInitParams: IEpochManager.EpochManagerInitParams({
                         epochDuration: EPOCH_DURATION,
-                        epochDurationTimestamp: uint48(vm.getBlockTimestamp() + 30)
+                        epochDurationTimestamp: uint48(vm.getBlockTimestamp() + 60)
                     }),
                     votingPowerProviders: votingPowerProviders,
                     keysProvider: IValSetDriver.CrossChainAddress({
