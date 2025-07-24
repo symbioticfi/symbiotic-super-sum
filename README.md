@@ -1,5 +1,7 @@
 # Sum task network example
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/symbioticfi/symbiotic-super-sum)
+
 ## Prerequisites
 
 ### Clone the repository
