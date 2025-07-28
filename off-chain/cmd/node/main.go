@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"sum/internal/relay-api"
+	"github.com/symbioticfi/relay/core/api/gen/api"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -39,7 +39,7 @@ type config struct {
 	logLevel        string
 }
 
-var relayClient *relay_api.Client
+var relayClient *api.Client
 var evmClient *ethclient.Client
 var sumContract *contracts.SumTask
 
@@ -114,7 +114,7 @@ var rootCmd = &cobra.Command{
 			return errors.Errorf("failed to create evm client: %w", err)
 		}
 
-		relayClient, err = relay_api.NewClient(cfg.relayApiURL)
+		relayClient, err = api.NewClient(cfg.relayApiURL)
 		if err != nil {
 			return errors.Errorf("failed to create relay client: %w", err)
 		}
@@ -182,7 +182,7 @@ func fetchResults(ctx context.Context) error {
 				continue
 			}
 
-			resp, err := relayClient.GetAggregationProofGet(ctx, relay_api.GetAggregationProofGetParams{
+			resp, err := relayClient.GetAggregationProofGet(ctx, api.GetAggregationProofGetParams{
 				RequestHash: state.SigRequestHash,
 			})
 
@@ -267,10 +267,10 @@ func processNewTasks(ctx context.Context, iter *contracts.SumTaskNewTaskCreatedI
 
 		slog.InfoContext(ctx, "New task result to sign", "message", hexutil.Encode(msg))
 
-		resp, err := relayClient.SignMessagePost(ctx, &relay_api.SignMessagePostReq{
+		resp, err := relayClient.SignMessagePost(ctx, &api.SignMessagePostReq{
 			KeyTag:        15,
 			Message:       msg,
-			RequiredEpoch: relay_api.NewOptUint64(evt.Task.RequiredEpoch.Uint64()),
+			RequiredEpoch: api.NewOptUint64(evt.Task.RequiredEpoch.Uint64()),
 		})
 		if err != nil {
 			return err
