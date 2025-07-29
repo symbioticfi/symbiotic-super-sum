@@ -175,6 +175,7 @@ EOF
     # ECDSA secp256k1 private keys must be 32 bytes (64 hex chars) and within range [1, n-1]
     # where n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
     BASE_PRIVATE_KEY=1000000000000000000
+    SWARM_KEY=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
 
     for i in $(seq 1 $operators); do
         local port=$((relay_start_port + i - 1))
@@ -216,8 +217,7 @@ EOF
     container_name: symbiotic-relay-$i
     command: 
       - /workspace/network-scripts/sidecar-start.sh 
-      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/0x$SYMB_PRIVATE_KEY_HEX
-      - :8080 
+      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/0x$SYMB_PRIVATE_KEY_HEX,p2p/1/0/$SWARM_KEY,p2p/1/1/$SYMB_PRIVATE_KEY_HEX
       - /app/$storage_dir
       - $role_flags
     ports:
