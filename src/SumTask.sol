@@ -4,12 +4,9 @@ pragma solidity ^0.8.25;
 import {ISettlement} from "@symbioticfi/relay-contracts/interfaces/modules/settlement/ISettlement.sol";
 
 contract SumTask {
-    struct Task {
-        uint256 numberA;
-        uint256 numberB;
-        uint32 taskCreatedBlock;
-        uint48 requiredEpoch;
-    }
+    error AlreadyResponded();
+    error InvalidQuorumSignature();
+    error InvalidVerifyingEpoch();
 
     enum TaskStatus {
         CREATED,
@@ -18,83 +15,90 @@ contract SumTask {
         NOT_FOUND
     }
 
-    event NewTaskCreated(uint32 indexed taskIndex, Task task);
+    struct Task {
+        uint256 numberA;
+        uint256 numberB;
+        uint256 nonce;
+        uint48 createdAt;
+    }
 
-    event TaskResponded(uint32 indexed taskIndex, uint256 result);
+    struct Response {
+        uint48 answeredAt;
+        uint256 answer;
+    }
 
-    uint32 public immutable TASK_RESPONSE_WINDOW_BLOCK = 1000;
+    event CreateTask(bytes32 indexed taskId, Task task);
+
+    event RespondTask(bytes32 indexed taskId, Response response);
+
+    uint32 public constant TASK_EXPIRY = 12000;
 
     ISettlement public settlement;
 
-    uint32 public tasksCount;
+    uint256 public nonce;
 
-    mapping(uint32 => Task) public allTasks;
+    mapping(bytes32 => Task) public tasks;
 
-    mapping(uint32 => uint256) public allTaskResults;
-
-    mapping(uint32 => bool) public isTaskResponded;
+    mapping(bytes32 => Response) public responses;
 
     constructor(address _settlement) {
         settlement = ISettlement(_settlement);
     }
 
-    function getTaskStatus(uint32 taskIndex) external view returns (TaskStatus) {
-        if (taskIndex >= tasksCount) {
+    function getTaskStatus(bytes32 taskId) public view returns (TaskStatus) {
+        if (responses[taskId].answeredAt > 0) {
+            return TaskStatus.RESPONDED;
+        }
+
+        if (tasks[taskId].createdAt == 0) {
             return TaskStatus.NOT_FOUND;
         }
 
-        Task memory task = allTasks[taskIndex];
-
-        if (uint32(block.number) > task.taskCreatedBlock + TASK_RESPONSE_WINDOW_BLOCK) {
+        if (block.timestamp > tasks[taskId].createdAt + TASK_EXPIRY) {
             return TaskStatus.EXPIRED;
-        }
-
-        if (isTaskResponded[taskIndex]) {
-            return TaskStatus.RESPONDED;
         }
 
         return TaskStatus.CREATED;
     }
 
-    function createTask(uint256 numberA, uint256 numberB) external returns (uint32) {
-        Task memory newTask = Task({
-            numberA: numberA,
-            numberB: numberB,
-            taskCreatedBlock: uint32(block.number),
-            requiredEpoch: settlement.getLastCommittedHeaderEpoch()
-        });
+    function createTask(uint256 numberA, uint256 numberB) public returns (bytes32 taskId) {
+        uint256 nonce_ = nonce++;
+        Task memory task = Task({numberA: numberA, numberB: numberB, nonce: nonce_, createdAt: uint48(block.timestamp)});
+        taskId = keccak256(abi.encode(block.chainid, numberA, numberB, nonce_));
+        tasks[taskId] = task;
 
-        allTasks[tasksCount] = newTask;
-        emit NewTaskCreated(tasksCount, newTask);
-
-        return tasksCount++;
+        emit CreateTask(taskId, task);
     }
 
-    function respondTask(uint32 taskIndex, uint256 result, bytes calldata proof) external {
-        // check task is exists
-        require(taskIndex < tasksCount, "Task does not exist");
+    function respondTask(bytes32 taskId, uint256 result, uint48 epoch, bytes calldata proof) public {
+        // check if the task is not responded yet
+        if (responses[taskId].answeredAt > 0) {
+            revert AlreadyResponded();
+        }
 
-        Task memory task = allTasks[taskIndex];
-
-        // check that the task is within the response window
-        require(
-            uint32(block.number) <= task.taskCreatedBlock + TASK_RESPONSE_WINDOW_BLOCK, "Responded to the task too late"
-        );
+        // verify that the verifying epoch is not stale
+        uint48 nextEpochCaptureTimestamp = settlement.getCaptureTimestampFromValSetHeaderAt(epoch + 1);
+        if (nextEpochCaptureTimestamp > 0 && block.timestamp >= nextEpochCaptureTimestamp + TASK_EXPIRY) {
+            revert InvalidVerifyingEpoch();
+        }
 
         // verify the quorum signature
-        bool isValid = settlement.verifyQuorumSigAt(
-            abi.encode(keccak256(abi.encode(taskIndex, result))),
-            settlement.getRequiredKeyTagFromValSetHeaderAt(task.requiredEpoch),
-            settlement.getQuorumThresholdFromValSetHeaderAt(task.requiredEpoch),
-            proof,
-            task.requiredEpoch,
-            new bytes(0)
-        );
-        require(isValid, "Invalid quorum signature");
+        if (
+            !settlement.verifyQuorumSigAt(
+                abi.encode(keccak256(abi.encode(taskId, result))),
+                settlement.getRequiredKeyTagFromValSetHeaderAt(epoch),
+                settlement.getQuorumThresholdFromValSetHeaderAt(epoch),
+                proof,
+                epoch,
+                new bytes(0)
+            )
+        ) {
+            revert InvalidQuorumSignature();
+        }
 
-        allTaskResults[taskIndex] = result;
-        isTaskResponded[taskIndex] = true;
+        Response memory response = Response({answeredAt: uint48(block.timestamp), answer: result});
+        responses[taskId] = response;
 
-        emit TaskResponded(taskIndex, result);
+        emit RespondTask(taskId, response);
     }
 }

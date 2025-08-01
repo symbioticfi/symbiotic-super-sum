@@ -150,7 +150,7 @@ func runProcesses(ctx context.Context, runSeparately bool) (processes, error) {
 
 	var prs processes
 
-	for i := 0; i < operatorsCount; i++ {
+	for i := range operatorsCount {
 		secretKey := fmt.Sprintf(secretKeyTemplate, common.Bytes2Hex(new(big.Int).SetUint64(firstKey+uint64(i)).Bytes()))
 		apiAddr := fmt.Sprintf(":%d", firstPort+i)
 		args := append(commonArgs, "--secret-keys", secretKey, "--http-listen", apiAddr, "--storage-dir", fmt.Sprintf(".data/%03d", firstData+i))
@@ -196,7 +196,7 @@ func runProcesses(ctx context.Context, runSeparately bool) (processes, error) {
 func (prs processes) waitServerStarted(ctx context.Context) {
 	var startedCound int
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		startedCound = 0
 		for _, pr := range prs {
 			if strings.Contains(pr.stdOut.String(), "All missing epochs loaded") {

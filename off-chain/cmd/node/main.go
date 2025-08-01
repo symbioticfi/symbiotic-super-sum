@@ -3,11 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rpc"
 	"log/slog"
 	"math/big"
 	"os"
@@ -16,32 +11,39 @@ import (
 	"syscall"
 	"time"
 
-	"sum/internal/relay-api"
-
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rpc"
+
+	relay_api "sum/internal/relay-api"
+
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-errors/errors"
 	"github.com/spf13/cobra"
 )
 
 const (
-	TaskCreated uint8 = iota
-	TaskResponded
-	TaskExpired
-	TaskNotFound
+	TaskCreated   uint8 = 0
+	TaskResponded uint8 = 1
+	TaskExpired   uint8 = 2
+	TaskNotFound  uint8 = 3
 )
 
 type config struct {
-	evmRpcURL       string
-	relayApiURL     string
-	contractAddress string
-	privateKey      string
-	logLevel        string
+	relayApiURL       string
+	evmRpcURLs        []string
+	contractAddresses []string
+	privateKey        string
+	logLevel          string
 }
 
 var relayClient *relay_api.Client
-var evmClient *ethclient.Client
-var sumContract *contracts.SumTask
+var evmClients map[int64]*ethclient.Client
+var sumContracts map[int64]*contracts.SumTask
+var lastBlocks map[int64]uint64
 
 func main() {
 	slog.Info("Running sum task off-chain client", "args", os.Args)
@@ -54,20 +56,20 @@ func main() {
 }
 
 func run() error {
-	rootCmd.PersistentFlags().StringVarP(&cfg.evmRpcURL, "evm-rpc-url", "e", "", "EVM RPC URL")
 	rootCmd.PersistentFlags().StringVarP(&cfg.relayApiURL, "relay-api-url", "r", "", "Relay API URL")
-	rootCmd.PersistentFlags().StringVarP(&cfg.contractAddress, "contract-address", "a", "", "Contract address")
+	rootCmd.PersistentFlags().StringSliceVarP(&cfg.evmRpcURLs, "evm-rpc-urls", "e", []string{}, "EVM RPC URLs separated by comma (e.g., 'https://mainnet.infura.io/v3/,...')")
+	rootCmd.PersistentFlags().StringSliceVarP(&cfg.contractAddresses, "contract-addresses", "a", []string{}, "SumTask contracts' addresses corresponding to the RPC URLs separated by comma (e.g., '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF,...')")
 	rootCmd.PersistentFlags().StringVarP(&cfg.privateKey, "private-key", "p", "", "Task response private key")
 	rootCmd.PersistentFlags().StringVarP(&cfg.logLevel, "log-level", "l", "info", "Log level")
 
-	if err := rootCmd.MarkPersistentFlagRequired("evm-rpc-url"); err != nil {
-		return errors.Errorf("failed to mark evm-rpc-url as required: %w", err)
-	}
 	if err := rootCmd.MarkPersistentFlagRequired("relay-api-url"); err != nil {
 		return errors.Errorf("failed to mark relay-api-url as required: %w", err)
 	}
-	if err := rootCmd.MarkPersistentFlagRequired("contract-address"); err != nil {
-		return errors.Errorf("failed to mark contract-address as required: %w", err)
+	if err := rootCmd.MarkPersistentFlagRequired("evm-rpc-urls"); err != nil {
+		return errors.Errorf("failed to mark evm-rpc-urls as required: %w", err)
+	}
+	if err := rootCmd.MarkPersistentFlagRequired("contract-addresses"); err != nil {
+		return errors.Errorf("failed to mark contract-addresses as required: %w", err)
 	}
 	if err := rootCmd.MarkPersistentFlagRequired("private-key"); err != nil {
 		return errors.Errorf("failed to mark private-key as required: %w", err)
@@ -79,13 +81,16 @@ func run() error {
 var cfg config
 
 type TaskState struct {
+	ChainID        int64
 	Task           contracts.SumTaskTask
 	Result         *big.Int
+	SigEpoch       int64
 	SigRequestHash string
 	AggProof       []byte
+	Statuses       map[int64]uint8
 }
 
-var allTasks map[uint32]TaskState
+var tasks map[common.Hash]TaskState
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -104,57 +109,76 @@ var rootCmd = &cobra.Command{
 			slog.SetLogLoggerLevel(slog.LevelError)
 		}
 
-		allTasks = make(map[uint32]TaskState)
-
 		ctx := signalContext(context.Background())
 
 		var err error
-		evmClient, err = ethclient.DialContext(ctx, cfg.evmRpcURL)
-		if err != nil {
-			return errors.Errorf("failed to create evm client: %w", err)
-		}
 
 		relayClient, err = relay_api.NewClient(cfg.relayApiURL)
 		if err != nil {
 			return errors.Errorf("failed to create relay client: %w", err)
 		}
 
-		sumContract, err = contracts.NewSumTask(common.HexToAddress(cfg.contractAddress), evmClient)
-		if err != nil {
-			return errors.Errorf("failed to create sum contract: %w", err)
+		if len(cfg.evmRpcURLs) == 0 {
+			return errors.Errorf("no RPC URLs provided")
+		}
+		evmClients = make(map[int64]*ethclient.Client)
+		sumContracts = make(map[int64]*contracts.SumTask)
+		tasks = make(map[common.Hash]TaskState)
+		for i, evmRpcURL := range cfg.evmRpcURLs {
+			evmClient, err := ethclient.DialContext(ctx, evmRpcURL)
+			if err != nil {
+				return errors.Errorf("failed to connect to RPC URL '%s': %w", evmRpcURL, err)
+			}
+
+			chainID, err := evmClient.ChainID(ctx)
+			if err != nil {
+				return errors.Errorf("failed to get chain ID from RPC URL '%s': %w", evmRpcURL, err)
+			}
+
+			sumContract, err := contracts.NewSumTask(common.HexToAddress(cfg.contractAddresses[i]), evmClient)
+			if err != nil {
+				return errors.Errorf("failed to create sum contract: %w", err)
+			}
+
+			evmClients[chainID.Int64()] = evmClient
+			sumContracts[chainID.Int64()] = sumContract
 		}
 
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
-		lastBlock := uint64(0)
+		lastBlocks = make(map[int64]uint64)
 
 		for {
 			select {
 			case <-ticker.C:
-				endBlock, err := evmClient.BlockByNumber(ctx, new(big.Int).SetInt64(rpc.FinalizedBlockNumber.Int64()))
-				if err != nil {
-					return errors.Errorf("failed to get finalized block number: %w", err)
+				for chainID, evmClient := range evmClients {
+					endBlock, err := evmClient.BlockByNumber(ctx, new(big.Int).SetInt64(rpc.FinalizedBlockNumber.Int64()))
+					if err != nil {
+						return errors.Errorf("failed to get finalized block number: %w", err)
+					}
+					endBlockNumber := endBlock.NumberU64()
+
+					lastBlock := lastBlocks[chainID]
+
+					slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", lastBlock, "toBlock", endBlockNumber)
+
+					events, err := sumContracts[chainID].FilterCreateTask(&bind.FilterOpts{
+						Context: ctx,
+						Start:   lastBlock,
+						End:     &endBlockNumber,
+					}, [][32]byte{})
+					if err != nil {
+						return errors.Errorf("failed to filter new task created events: %w", err)
+					}
+
+					lastBlocks[chainID] = endBlockNumber + 1
+
+					err = processNewTasks(ctx, chainID, events)
+					if err != nil {
+						fmt.Printf("Error processing new task event: %v\n", err)
+					}
 				}
-				endBlockNumber := endBlock.NumberU64()
-
-				slog.DebugContext(ctx, "Fetching events", "fromBlock", lastBlock, "toBlock", endBlockNumber)
-
-				events, err := sumContract.FilterNewTaskCreated(&bind.FilterOpts{
-					Context: ctx,
-					Start:   lastBlock,
-					End:     &endBlockNumber,
-				}, []uint32{})
-				if err != nil {
-					return errors.Errorf("failed to filter new task created events: %w", err)
-				}
-				lastBlock = endBlockNumber + 1
-
-				err = processNewTasks(ctx, events)
-				if err != nil {
-					fmt.Printf("Error processing new task event: %v\n", err)
-				}
-
 				err = fetchResults(ctx)
 				if err != nil {
 					fmt.Printf("Error fetching results: %v\n", err)
@@ -166,77 +190,110 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+func getTaskID(task TaskState) common.Hash {
+	u256Ty, _ := abi.NewType("uint256", "", nil)
+	args := abi.Arguments{
+		{Type: u256Ty},
+		{Type: u256Ty},
+		{Type: u256Ty},
+		{Type: u256Ty},
+	}
+	encoded, err := args.Pack(
+		big.NewInt(int64(task.ChainID)),
+		task.Task.NumberA,
+		task.Task.NumberB,
+		task.Task.Nonce,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to encode taskID: %v", err))
+	}
+	return crypto.Keccak256Hash(encoded)
+}
+
 func fetchResults(ctx context.Context) error {
-	for taskID, state := range allTasks {
-		if state.AggProof == nil {
-			status, err := sumContract.GetTaskStatus(&bind.CallOpts{
+	for _, state := range tasks {
+		taskID := getTaskID(state)
+		for chainID := range sumContracts {
+			if state.Statuses[chainID] == TaskResponded {
+				continue
+			}
+			status, err := sumContracts[chainID].GetTaskStatus(&bind.CallOpts{
 				Context: ctx,
 			}, taskID)
 			if err != nil {
 				return err
 			}
-
-			if status != TaskCreated {
-				// if task is not in created state just delete it
-				delete(allTasks, taskID)
-				continue
+			state.Statuses[chainID] = status
+		}
+		slog.InfoContext(ctx, "Task statuses", "taskID", taskID, "statuses", state.Statuses)
+		allNotFoundOrExpired := true
+		allResponded := true
+		for _, status := range state.Statuses {
+			if status != TaskNotFound && status != TaskExpired {
+				allNotFoundOrExpired = false
 			}
-
+			if status != TaskResponded {
+				allResponded = false
+			}
+		}
+		if allNotFoundOrExpired || allResponded {
+			delete(tasks, taskID)
+			continue
+		}
+		if state.AggProof == nil {
 			resp, err := relayClient.GetAggregationProofGet(ctx, relay_api.GetAggregationProofGetParams{
 				RequestHash: state.SigRequestHash,
 			})
-
 			if err != nil {
 				//		slog.InfoContext(ctx, "Failed to fetch aggregation proof", "err", err)
 				continue
 			}
-
 			state.AggProof = resp.Proof
-			allTasks[taskID] = state
-
 			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID, "proof", hexutil.Encode(resp.Proof))
+		}
 
-			err = processProof(ctx, taskID)
-			if err != nil {
-				fmt.Printf("Error processing proof: %v\n", err)
-			}
+		tasks[taskID] = state
+
+		err := processProof(ctx, taskID)
+		if err != nil {
+			fmt.Printf("Error processing proof: %v\n", err)
 		}
 	}
 	return nil
 }
 
-func processProof(ctx context.Context, taskID uint32) error {
+func processProof(ctx context.Context, taskID common.Hash) error {
 	pk, err := crypto.HexToECDSA(cfg.privateKey)
 	if err != nil {
 		return errors.Errorf("failed to parse private key: %w", err)
 	}
-	chainId, err := evmClient.ChainID(ctx)
-	if err != nil {
-		return errors.Errorf("failed to get chain ID: %w", err)
-	}
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainId)
-	if err != nil {
-		return errors.Errorf("failed to create transactor: %w", err)
-	}
-	txOpts.Context = ctx
+	for chainID, status := range tasks[taskID].Statuses {
+		if status == TaskResponded {
+			continue
+		}
+		txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(chainID))
+		if err != nil {
+			return errors.Errorf("failed to create transactor: %w", err)
+		}
+		txOpts.Context = ctx
 
-	taskState := allTasks[taskID]
+		task := tasks[taskID]
+		tx, err := sumContracts[chainID].RespondTask(txOpts, taskID, task.Result, big.NewInt(task.SigEpoch), task.AggProof)
+		if err != nil {
+			return errors.Errorf("failed to respond task: %w", err)
+		}
 
-	tx, err := sumContract.RespondTask(txOpts, taskID, taskState.Result, taskState.AggProof)
-	if err != nil {
-		return errors.Errorf("failed to respond task: %w", err)
+		slog.InfoContext(ctx, "Submitted response tx", "taskID", taskID, "tx", tx.Hash().String(), "gas", tx.Gas())
 	}
-
-	slog.InfoContext(ctx, "Submitted response tx", "taskID", taskID, "tx", tx.Hash().String(), "gas", tx.Gas())
 	return nil
 }
 
-func processNewTasks(ctx context.Context, iter *contracts.SumTaskNewTaskCreatedIterator) error {
+func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTaskCreateTaskIterator) error {
 	for iter.Next() {
 		evt := iter.Event
-		status, err := sumContract.GetTaskStatus(&bind.CallOpts{
+		status, err := sumContracts[chainID].GetTaskStatus(&bind.CallOpts{
 			Context: ctx,
-		}, evt.TaskIndex)
+		}, evt.TaskId)
 		if err != nil {
 			return err
 		}
@@ -246,13 +303,13 @@ func processNewTasks(ctx context.Context, iter *contracts.SumTaskNewTaskCreatedI
 			continue
 		}
 
-		slog.InfoContext(ctx, "Received new task", "taskID", evt.TaskIndex, "task", evt.Task)
+		slog.InfoContext(ctx, "Received new task", "taskID", evt.TaskId, "task", evt.Task)
 
-		uint32T, _ := abi.NewType("uint32", "", nil)
+		bytes32T, _ := abi.NewType("bytes32", "", nil)
 		uint256T, _ := abi.NewType("uint256", "", nil)
 
 		args := abi.Arguments{
-			{Type: uint32T},
+			{Type: bytes32T},
 			{Type: uint256T},
 		}
 
@@ -260,27 +317,35 @@ func processNewTasks(ctx context.Context, iter *contracts.SumTaskNewTaskCreatedI
 
 		slog.InfoContext(ctx, "New task result", "result", taskResult.String())
 
-		msg, err := args.Pack(evt.TaskIndex, taskResult)
+		msg, err := args.Pack(evt.TaskId, taskResult)
 		if err != nil {
 			return err
 		}
 
 		slog.InfoContext(ctx, "New task result to sign", "message", hexutil.Encode(msg))
 
+		suggestedEpoch, err := relayClient.GetSuggestedEpochGet(ctx)
+		if err != nil {
+			return err
+		}
+
 		resp, err := relayClient.SignMessagePost(ctx, &relay_api.SignMessagePostReq{
 			KeyTag:        15,
 			Message:       msg,
-			RequiredEpoch: relay_api.NewOptUint64(evt.Task.RequiredEpoch.Uint64()),
+			RequiredEpoch: relay_api.NewOptUint64(suggestedEpoch.Epoch),
 		})
 		if err != nil {
 			return err
 		}
 
-		allTasks[evt.TaskIndex] = TaskState{
+		tasks[evt.TaskId] = TaskState{
+			ChainID:        chainID,
 			Task:           evt.Task,
+			Result:         taskResult,
+			SigEpoch:       int64(resp.Epoch),
 			SigRequestHash: resp.RequestHash,
-			Result:         new(big.Int).Set(taskResult),
 			AggProof:       nil,
+			Statuses:       map[int64]uint8{},
 		}
 
 		slog.InfoContext(ctx, "New task result signed", "resp", resp)

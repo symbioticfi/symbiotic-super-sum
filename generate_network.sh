@@ -97,7 +97,6 @@ generate_docker_compose() {
         rm -rf "$network_dir"
     fi
     
-    mkdir -p "$network_dir"
     mkdir -p "$network_dir/deploy-data"
     
     for i in $(seq 1 $operators); do
@@ -108,17 +107,18 @@ generate_docker_compose() {
     done
 
     local anvil_port=8545
+    local anvil_settlement_port=8546
     local relay_start_port=8081
     local sum_start_port=9091
     
     cat > "$network_dir/docker-compose.yml" << EOF
 services:
-  # Anvil local Ethereum network
+  # Main Anvil local Ethereum network (Chain ID: 31337)
   anvil:
     image: ghcr.io/foundry-rs/foundry:v1.2.3
     container_name: symbiotic-anvil
     entrypoint: ["anvil"]
-    command: "--port 8545 --auto-impersonate --slots-in-an-epoch 1 --accounts 10 --balance 10000 --gas-limit 30000000"
+    command: "--port 8545 --chain-id 31337 --timestamp 1754051800 --auto-impersonate --slots-in-an-epoch 1 --accounts 10 --balance 10000 --gas-limit 30000000"
     environment:
       - ANVIL_IP_ADDR=0.0.0.0
     ports:
@@ -131,9 +131,29 @@ services:
       timeout: 1s
       retries: 10
 
-  # Contract deployment service
-  deployer:
+  # Settlement Anvil local Ethereum network (Chain ID: 31338)
+  anvil-settlement:
     image: ghcr.io/foundry-rs/foundry:v1.2.3
+    container_name: symbiotic-anvil-settlement
+    entrypoint: ["anvil"]
+    command: "--port 8546 --chain-id 31338 --timestamp 1754051800 --auto-impersonate --slots-in-an-epoch 1 --accounts 10 --balance 10000 --gas-limit 30000000"
+    environment:
+      - ANVIL_IP_ADDR=0.0.0.0
+    ports:
+      - "8546:8546"
+    networks:
+      - symbiotic-network
+    healthcheck:
+      test: ["CMD", "cast", "client", "--rpc-url", "http://localhost:8546"]
+      interval: 2s
+      timeout: 1s
+      retries: 10
+
+  # Contract deployment service for main chain
+  deployer:
+    build:
+      context: ../network-scripts
+      dockerfile: Dockerfile.foundry
     container_name: symbiotic-deployer
     volumes:
       - ../:/app
@@ -141,9 +161,11 @@ services:
       - ../broadcast:/app/broadcast
       - ./deploy-data:/deploy-data
     working_dir: /app
-    command: ./network-scripts/deploy.sh
+    command:  ./network-scripts/deploy.sh
     depends_on:
       anvil:
+        condition: service_healthy
+      anvil-settlement:
         condition: service_healthy
     networks:
       - symbiotic-network
@@ -152,7 +174,9 @@ services:
 
   # Genesis generation service
   genesis-generator:
-    image: symbioticfi/relay:latest
+    build:
+      context: ../network-scripts
+      dockerfile: Dockerfile.relay
     container_name: symbiotic-genesis-generator
     volumes:
       - ../:/workspace
@@ -213,11 +237,13 @@ EOF
 
   # Relay sidecar $i ($role_name)
   relay-sidecar-$i:
-    image: symbioticfi/relay:latest
+    build:
+      context: ../network-scripts
+      dockerfile: Dockerfile.relay
     container_name: symbiotic-relay-$i
-    command: 
+    command:
       - /workspace/network-scripts/sidecar-start.sh 
-      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/0x$SYMB_PRIVATE_KEY_HEX,p2p/1/0/$SWARM_KEY,p2p/1/1/$SYMB_PRIVATE_KEY_HEX
+      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31338/0x$SYMB_PRIVATE_KEY_HEX,p2p/1/0/$SWARM_KEY,p2p/1/1/$SYMB_PRIVATE_KEY_HEX
       - /app/$storage_dir
       - $role_flags
     ports:
