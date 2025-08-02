@@ -231,7 +231,7 @@ contract LocalDeploy is SymbioticCoreInit {
                     }),
                     epochManagerInitParams: IEpochManager.EpochManagerInitParams({
                         epochDuration: EPOCH_DURATION,
-                        epochDurationTimestamp: uint48(vm.getBlockTimestamp() + 60)
+                        epochDurationTimestamp: 0
                     }),
                     votingPowerProviders: votingPowerProviders,
                     keysProvider: IValSetDriver.CrossChainAddress({
