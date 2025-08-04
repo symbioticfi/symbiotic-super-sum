@@ -247,7 +247,7 @@ EOF
       dockerfile: Dockerfile
     container_name: symbiotic-sum-node-$i
     entrypoint: ["/workspace/network-scripts/sum-node-start.sh"]
-    command: ["http://relay-sidecar-$i:8080/api/v1", "$SYMB_PRIVATE_KEY_HEX"]
+    command: ["relay-sidecar-$i:8080", "$SYMB_PRIVATE_KEY_HEX"]
     volumes:
       - ../:/workspace
       - ./deploy-data:/deploy-data
