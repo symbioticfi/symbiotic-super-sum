@@ -6,6 +6,8 @@
 
 set -e
 
+# Define the image tag for the relay service, that the current sum node is compatible with
+RELAY_IMAGE_TAG="0.2.1-20250802065445-3f8139849d3f"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -213,7 +215,7 @@ EOF
 
   # Relay sidecar $i ($role_name)
   relay-sidecar-$i:
-    image: symbioticfi/relay:latest
+    image: symbioticfi/relay:$RELAY_IMAGE_TAG
     container_name: symbiotic-relay-$i
     command: 
       - /workspace/network-scripts/sidecar-start.sh 
@@ -247,7 +249,7 @@ EOF
       dockerfile: Dockerfile
     container_name: symbiotic-sum-node-$i
     entrypoint: ["/workspace/network-scripts/sum-node-start.sh"]
-    command: ["http://relay-sidecar-$i:8080/api/v1", "$SYMB_PRIVATE_KEY_HEX"]
+    command: ["relay-sidecar-$i:8080", "$SYMB_PRIVATE_KEY_HEX"]
     volumes:
       - ../:/workspace
       - ./deploy-data:/deploy-data

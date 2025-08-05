@@ -12,11 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"sum/internal/utils"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-errors/errors"
+	v1 "github.com/symbioticfi/relay/api/client/v1"
 	"golang.org/x/sync/errgroup"
-
-	relay_api "sum/internal/relay-api"
 )
 
 type processes []process
@@ -27,7 +28,7 @@ type process struct {
 	stdOut        *bytes.Buffer
 	stdErr        *bytes.Buffer
 	apiAddr       string
-	relayClient   *relay_api.Client
+	relayClient   *v1.SymbioticClient
 	runSeparately bool
 }
 
@@ -71,7 +72,7 @@ func run(ctx context.Context) error {
 }
 
 func sendRequestAndWait(ctx context.Context, prs processes, nRequests int) *errors.Error {
-	currentEpoch, err := prs[0].relayClient.GetSuggestedEpochGet(ctx)
+	currentEpoch, err := prs[0].relayClient.GetSuggestedEpoch(ctx, &v1.GetSuggestedEpochRequest{})
 	if err != nil {
 		return errors.Errorf("failed to get current epoch: %w", err)
 	}
@@ -111,7 +112,7 @@ cycle:
 					continue
 				}
 
-				resp, err := prs[0].relayClient.GetAggregationProofGet(ctx, relay_api.GetAggregationProofGetParams{
+				resp, err := prs[0].relayClient.GetAggregationProof(ctx, &v1.GetAggregationProofRequest{
 					RequestHash: requestHash,
 				})
 				if err != nil {
@@ -119,7 +120,7 @@ cycle:
 					continue
 				}
 
-				slog.Debug("Received aggregation proof", "requestHash", requestHash, "proof", common.Bytes2Hex(resp.MessageHash), "elapsed", time.Since(sentTime))
+				slog.Debug("Received aggregation proof", "requestHash", requestHash, "proof", common.Bytes2Hex(resp.AggregationProof.MessageHash), "elapsed", time.Since(sentTime))
 
 				requestHashesAggregated[requestHash] = struct{}{}
 			}
@@ -175,11 +176,12 @@ func runProcesses(ctx context.Context, runSeparately bool) (processes, error) {
 				return nil, errors.Errorf("failed to start process: %w", err)
 			}
 		}
-		var err error
-		pr.relayClient, err = relay_api.NewClient("http://localhost" + apiAddr + "/api/v1")
+
+		conn, err := utils.GetGRPCConnection("localhost" + apiAddr + "/api/v1")
 		if err != nil {
 			return nil, errors.Errorf("failed to create relay client: %w", err)
 		}
+		pr.relayClient = v1.NewSymbioticClient(conn)
 
 		slog.Debug("Started process", "args", pr.args)
 
@@ -254,10 +256,10 @@ func (prs processes) sendMessageToAllRelays(ctx context.Context, epoch uint64) (
 }
 
 func sendSignMessageRequest(ctx context.Context, pr process, message []byte, epoch uint64) (string, error) {
-	resp, err := pr.relayClient.SignMessagePost(ctx, &relay_api.SignMessagePostReq{
+	resp, err := pr.relayClient.SignMessage(ctx, &v1.SignMessageRequest{
 		KeyTag:        15,
 		Message:       message,
-		RequiredEpoch: relay_api.NewOptUint64(epoch),
+		RequiredEpoch: &epoch,
 	})
 	if err != nil {
 		return "", errors.Errorf("failed to send sign message request: %w", err)

@@ -3,20 +3,23 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"math/big"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"sum/internal/utils"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
-	"log/slog"
-	"math/big"
-	"os"
-	"os/signal"
-	"sum/internal/contracts"
-	"syscall"
-	"time"
+	v1 "github.com/symbioticfi/relay/api/client/v1"
 
-	"sum/internal/relay-api"
+	"sum/internal/contracts"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -39,7 +42,7 @@ type config struct {
 	logLevel        string
 }
 
-var relayClient *relay_api.Client
+var relayClient *v1.SymbioticClient
 var evmClient *ethclient.Client
 var sumContract *contracts.SumTask
 
@@ -114,11 +117,11 @@ var rootCmd = &cobra.Command{
 			return errors.Errorf("failed to create evm client: %w", err)
 		}
 
-		relayClient, err = relay_api.NewClient(cfg.relayApiURL)
+		conn, err := utils.GetGRPCConnection(cfg.relayApiURL)
 		if err != nil {
 			return errors.Errorf("failed to create relay client: %w", err)
 		}
-
+		relayClient = v1.NewSymbioticClient(conn)
 		sumContract, err = contracts.NewSumTask(common.HexToAddress(cfg.contractAddress), evmClient)
 		if err != nil {
 			return errors.Errorf("failed to create sum contract: %w", err)
@@ -182,7 +185,7 @@ func fetchResults(ctx context.Context) error {
 				continue
 			}
 
-			resp, err := relayClient.GetAggregationProofGet(ctx, relay_api.GetAggregationProofGetParams{
+			resp, err := relayClient.GetAggregationProof(ctx, &v1.GetAggregationProofRequest{
 				RequestHash: state.SigRequestHash,
 			})
 
@@ -191,10 +194,10 @@ func fetchResults(ctx context.Context) error {
 				continue
 			}
 
-			state.AggProof = resp.Proof
+			state.AggProof = resp.AggregationProof.Proof
 			allTasks[taskID] = state
 
-			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID, "proof", hexutil.Encode(resp.Proof))
+			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID, "proof", hexutil.Encode(resp.AggregationProof.Proof))
 
 			err = processProof(ctx, taskID)
 			if err != nil {
@@ -267,10 +270,11 @@ func processNewTasks(ctx context.Context, iter *contracts.SumTaskNewTaskCreatedI
 
 		slog.InfoContext(ctx, "New task result to sign", "message", hexutil.Encode(msg))
 
-		resp, err := relayClient.SignMessagePost(ctx, &relay_api.SignMessagePostReq{
+		reqEpoch := evt.Task.RequiredEpoch.Uint64()
+		resp, err := relayClient.SignMessage(ctx, &v1.SignMessageRequest{
 			KeyTag:        15,
 			Message:       msg,
-			RequiredEpoch: relay_api.NewOptUint64(evt.Task.RequiredEpoch.Uint64()),
+			RequiredEpoch: &reqEpoch,
 		})
 		if err != nil {
 			return err
