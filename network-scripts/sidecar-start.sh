@@ -1,4 +1,7 @@
 #!/bin/sh
+
+apk add --no-cache jq
+
 echo "Waiting for relay_contracts.json file..."
 until [ -f /deploy-data/relay_contracts.json ]; do sleep 2; done
 

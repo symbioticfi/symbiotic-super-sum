@@ -1,4 +1,7 @@
 #!/bin/sh
+
+apk add --no-cache jq
+
 echo 'Waiting for deployment completion...'
 until [ -f /deploy-data/deployment-complete.marker ]; do sleep 2; done
 

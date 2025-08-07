@@ -1,9 +1,0 @@
-FROM symbioticfi/relay:latest
-
-RUN apk add --no-cache jq
-
-USER root
-
-WORKDIR /workspace
-
-CMD ["/bin/bash"] 

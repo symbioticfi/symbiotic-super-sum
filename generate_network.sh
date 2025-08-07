@@ -161,7 +161,7 @@ services:
       - ../broadcast:/app/broadcast
       - ./deploy-data:/deploy-data
     working_dir: /app
-    command:  ./network-scripts/deploy.sh
+    command: ./network-scripts/deploy.sh
     depends_on:
       anvil:
         condition: service_healthy
@@ -174,9 +174,7 @@ services:
 
   # Genesis generation service
   genesis-generator:
-    build:
-      context: ../network-scripts
-      dockerfile: Dockerfile.relay
+    image: symbioticfi/relay:latest
     container_name: symbiotic-genesis-generator
     volumes:
       - ../:/workspace
@@ -237,9 +235,7 @@ EOF
 
   # Relay sidecar $i ($role_name)
   relay-sidecar-$i:
-    build:
-      context: ../network-scripts
-      dockerfile: Dockerfile.relay
+    image: symbioticfi/relay:latest
     container_name: symbiotic-relay-$i
     command:
       - /workspace/network-scripts/sidecar-start.sh 
