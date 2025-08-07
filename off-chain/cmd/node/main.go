@@ -7,18 +7,21 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
-	"sum/internal/contracts"
 	"syscall"
 	"time"
 
+	"sum/internal/utils"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
+	v1 "github.com/symbioticfi/relay/api/client/v1"
 
-	relay_api "sum/internal/relay-api"
+	"sum/internal/contracts"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-errors/errors"
@@ -26,10 +29,10 @@ import (
 )
 
 const (
-	TaskCreated uint8 = 0
-	TaskResponded
-	TaskExpired
-	TaskNotFound
+	TaskCreated   uint8 = 0
+	TaskResponded uint8 = 1
+	TaskExpired   uint8 = 2
+	TaskNotFound  uint8 = 3
 )
 
 type config struct {
@@ -40,7 +43,7 @@ type config struct {
 	logLevel          string
 }
 
-var relayClient *relay_api.Client
+var relayClient *v1.SymbioticClient
 var evmClients map[int64]*ethclient.Client
 var sumContracts map[int64]*contracts.SumTask
 var lastBlocks map[int64]uint64
@@ -58,7 +61,7 @@ func main() {
 func run() error {
 	rootCmd.PersistentFlags().StringVarP(&cfg.relayApiURL, "relay-api-url", "r", "", "Relay API URL")
 	rootCmd.PersistentFlags().StringSliceVarP(&cfg.evmRpcURLs, "evm-rpc-urls", "e", []string{}, "EVM RPC URLs separated by comma (e.g., 'https://mainnet.infura.io/v3/,...')")
-	rootCmd.PersistentFlags().StringSliceVarP(&cfg.contractAddresses, "contract-addresses", "a", []string{}, "SumTask contracts' addresses corresponding to the RPC URLs separated by comma (e.g., '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF,...')")
+	rootCmd.PersistentFlags().StringSliceVarP(&cfg.contractAddresses, "contract-addresses", "a", []string{}, "SumTask contracts' addresses corresponding to the RPC URLs separated by comma (e.g., '0x4826533B4897376654Bb4d4AD88B7faFD0C98528,...')")
 	rootCmd.PersistentFlags().StringVarP(&cfg.privateKey, "private-key", "p", "", "Task response private key")
 	rootCmd.PersistentFlags().StringVarP(&cfg.logLevel, "log-level", "l", "info", "Log level")
 
@@ -113,10 +116,12 @@ var rootCmd = &cobra.Command{
 
 		var err error
 
-		relayClient, err = relay_api.NewClient(cfg.relayApiURL)
+		conn, err := utils.GetGRPCConnection(cfg.relayApiURL)
 		if err != nil {
 			return errors.Errorf("failed to create relay client: %w", err)
 		}
+
+		relayClient = v1.NewSymbioticClient(conn)
 
 		if len(cfg.evmRpcURLs) == 0 {
 			return errors.Errorf("no RPC URLs provided")
@@ -190,26 +195,6 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func getTaskID(task TaskState) common.Hash {
-	u256Ty, _ := abi.NewType("uint256", "", nil)
-	args := abi.Arguments{
-		{Type: u256Ty},
-		{Type: u256Ty},
-		{Type: u256Ty},
-		{Type: u256Ty},
-	}
-	encoded, err := args.Pack(
-		big.NewInt(int64(task.ChainID)),
-		task.Task.NumberA,
-		task.Task.NumberB,
-		task.Task.Nonce,
-	)
-	if err != nil {
-		panic(fmt.Sprintf("failed to encode taskID: %v", err))
-	}
-	return crypto.Keccak256Hash(encoded)
-}
-
 func fetchResults(ctx context.Context) error {
 	for taskID, state := range tasks {
 		for chainID := range sumContracts {
@@ -240,15 +225,15 @@ func fetchResults(ctx context.Context) error {
 			continue
 		}
 		if state.AggProof == nil {
-			resp, err := relayClient.GetAggregationProofGet(ctx, relay_api.GetAggregationProofGetParams{
+			resp, err := relayClient.GetAggregationProof(ctx, &v1.GetAggregationProofRequest{
 				RequestHash: state.SigRequestHash,
 			})
 			if err != nil {
 				//		slog.InfoContext(ctx, "Failed to fetch aggregation proof", "err", err)
 				continue
 			}
-			state.AggProof = resp.Proof
-			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID, "proof", hexutil.Encode(resp.Proof))
+			state.AggProof = resp.AggregationProof.Proof
+			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID, "proof", hexutil.Encode(resp.AggregationProof.Proof))
 		}
 
 		tasks[taskID] = state
@@ -323,15 +308,15 @@ func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTask
 
 		slog.InfoContext(ctx, "New task result to sign", "message", hexutil.Encode(msg))
 
-		suggestedEpoch, err := relayClient.GetSuggestedEpochGet(ctx)
+		suggestedEpoch, err := relayClient.GetSuggestedEpoch(ctx, &v1.GetSuggestedEpochRequest{})
 		if err != nil {
 			return err
 		}
 
-		resp, err := relayClient.SignMessagePost(ctx, &relay_api.SignMessagePostReq{
+		resp, err := relayClient.SignMessage(ctx, &v1.SignMessageRequest{
 			KeyTag:        15,
 			Message:       msg,
-			RequiredEpoch: relay_api.NewOptUint64(suggestedEpoch.Epoch),
+			RequiredEpoch: &suggestedEpoch.Epoch,
 		})
 		if err != nil {
 			return err
