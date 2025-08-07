@@ -26,10 +26,10 @@ import (
 )
 
 const (
-	TaskCreated   uint8 = 0
-	TaskResponded uint8 = 1
-	TaskExpired   uint8 = 2
-	TaskNotFound  uint8 = 3
+	TaskCreated uint8 = 0
+	TaskResponded
+	TaskExpired
+	TaskNotFound
 )
 
 type config struct {
@@ -211,8 +211,7 @@ func getTaskID(task TaskState) common.Hash {
 }
 
 func fetchResults(ctx context.Context) error {
-	for _, state := range tasks {
-		taskID := getTaskID(state)
+	for taskID, state := range tasks {
 		for chainID := range sumContracts {
 			if state.Statuses[chainID] == TaskResponded {
 				continue
@@ -267,7 +266,8 @@ func processProof(ctx context.Context, taskID common.Hash) error {
 	if err != nil {
 		return errors.Errorf("failed to parse private key: %w", err)
 	}
-	for chainID, status := range tasks[taskID].Statuses {
+	task := tasks[taskID]
+	for chainID, status := range task.Statuses {
 		if status == TaskResponded {
 			continue
 		}
@@ -277,7 +277,6 @@ func processProof(ctx context.Context, taskID common.Hash) error {
 		}
 		txOpts.Context = ctx
 
-		task := tasks[taskID]
 		tx, err := sumContracts[chainID].RespondTask(txOpts, taskID, task.Result, big.NewInt(task.SigEpoch), task.AggProof)
 		if err != nil {
 			return errors.Errorf("failed to respond task: %w", err)
