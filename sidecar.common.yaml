@@ -7,3 +7,6 @@ signer: true
 chains:
   - 'http://127.0.0.1:8545'
   - 'http://127.0.0.1:8546'
+enable-mdns: true
+bootnodes:
+  - /dns4/127.0.0.1/tcp/8881/p2p/16Uiu2HAmFUiPYAJ7bE88Q8d7Kznrw5ifrje2e5QFyt7uFPk2G3iR

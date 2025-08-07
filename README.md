@@ -260,8 +260,9 @@ Sidecar 1 (signer only):
 
 ```bash
 ./bin/symbiotic_relay --config sidecar.common.yaml \
-    --secret-keys symb/0/15/0xde0b6b3a7640000,evm/1/31337/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80,evm/1/31338/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+    --secret-keys symb/0/15/0xde0b6b3a7640000,evm/1/31337/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640000,evm/1/31338/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640000,p2p/1/0/0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140,p2p/1/1/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640000 \
     --http-listen :8081 \
+    --p2p-listen "/ip4/127.0.0.1/tcp/8881" \
     --storage-dir .data-01
 ```
 
@@ -269,8 +270,9 @@ Sidecar 2 (Signer + Aggregator):
 
 ```bash
 ./bin/symbiotic_relay --config sidecar.common.yaml \
-    --secret-keys symb/0/15/0xde0b6b3a7640001,evm/1/31337/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80,evm/1/31338/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+    --secret-keys symb/0/15/0xde0b6b3a7640001,evm/1/31337/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640001,evm/1/31338/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640001,p2p/1/0/0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140,p2p/1/1/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640001 \
     --http-listen :8082 \
+    --p2p-listen "/ip4/127.0.0.1/tcp/8882" \
     --storage-dir .data-02 \
     --aggregator true
 ```
@@ -279,8 +281,9 @@ Sidecar 3 (Signer + Committer):
 
 ```bash
 ./bin/symbiotic_relay --config sidecar.common.yaml \
-    --secret-keys symb/0/15/0xde0b6b3a7640002,evm/1/31337/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80,evm/1/31338/0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+    --secret-keys symb/0/15/0xde0b6b3a7640002,evm/1/31337/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640002,evm/1/31338/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640002,p2p/1/0/0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140,p2p/1/1/0x0000000000000000000000000000000000000000000000000DE0B6B3A7640002 \
     --http-listen :8083 \
+    --p2p-listen "/ip4/127.0.0.1/tcp/8883" \
     --storage-dir .data-03 \
     --committer true
 ```
@@ -301,27 +304,27 @@ Node 1 (connected with sidecar 1):
 
 ```bash
 ./off-chain/sum_node --evm-rpc-urls http://127.0.0.1:8545,http://127.0.0.1:8546 \
-    --relay-api-url http://127.0.0.1:8081 \
+    --relay-api-url 127.0.0.1:8081 \
     --contract-addresses 0x4826533B4897376654Bb4d4AD88B7faFD0C98528,0x5FC8d32690cc91D4c39d9d3abcBD16989F875707 \
-    --private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    --private-key 0000000000000000000000000000000000000000000000000DE0B6B3A7640000
 ```
 
 Node 2 (connected with sidecar 2):
 
 ```bash
 ./off-chain/sum_node --evm-rpc-urls http://127.0.0.1:8545,http://127.0.0.1:8546 \
-    --relay-api-url http://127.0.0.1:8082 \
+    --relay-api-url 127.0.0.1:8082 \
     --contract-addresses 0x4826533B4897376654Bb4d4AD88B7faFD0C98528,0x5FC8d32690cc91D4c39d9d3abcBD16989F875707 \
-    --private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    --private-key 0000000000000000000000000000000000000000000000000DE0B6B3A7640001
 ```
 
 Node 3 (connected with sidecar 3):
 
 ```bash
 ./off-chain/sum_node --evm-rpc-urls http://127.0.0.1:8545,http://127.0.0.1:8546 \
-    --relay-api-url http://127.0.0.1:8083 \
+    --relay-api-url 127.0.0.1:8083 \
     --contract-addresses 0x4826533B4897376654Bb4d4AD88B7faFD0C98528,0x5FC8d32690cc91D4c39d9d3abcBD16989F875707 \
-    --private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    --private-key 0000000000000000000000000000000000000000000000000DE0B6B3A7640002
 ```
 
 ### Request task
