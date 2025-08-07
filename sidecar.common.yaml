@@ -1,8 +1,12 @@
 driver:
   chain-id: 31337
-  address: "0x4826533B4897376654Bb4d4AD88B7faFD0C98528"
-log-level: "debug"
-log-mode: "pretty"
+  address: '0x1291Be112d480055DaFd8a610b7d1e203891C274'
+log-level: 'debug'
+log-mode: 'pretty'
 signer: true
 chains:
-  - "http://127.0.0.1:8545"
+  - 'http://127.0.0.1:8545'
+  - 'http://127.0.0.1:8546'
+enable-mdns: true
+bootnodes:
+  - /dns4/127.0.0.1/tcp/8881/p2p/16Uiu2HAmFUiPYAJ7bE88Q8d7Kznrw5ifrje2e5QFyt7uFPk2G3iR

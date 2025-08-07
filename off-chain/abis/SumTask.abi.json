@@ -2,101 +2,26 @@
   {
     "type": "constructor",
     "inputs": [
-      {
-        "name": "_settlement",
-        "type": "address",
-        "internalType": "address"
-      }
+      { "name": "_settlement", "type": "address", "internalType": "address" }
     ],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "TASK_RESPONSE_WINDOW_BLOCK",
+    "name": "TASK_EXPIRY",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "allTaskResults",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "allTasks",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "numberA",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "numberB",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "taskCreatedBlock",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "requiredEpoch",
-        "type": "uint48",
-        "internalType": "uint48"
-      }
-    ],
+    "outputs": [{ "name": "", "type": "uint32", "internalType": "uint32" }],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "createTask",
     "inputs": [
-      {
-        "name": "numberA",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "numberB",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+      { "name": "numberA", "type": "uint256", "internalType": "uint256" },
+      { "name": "numberB", "type": "uint256", "internalType": "uint256" }
     ],
     "outputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
+      { "name": "taskId", "type": "bytes32", "internalType": "bytes32" }
     ],
     "stateMutability": "nonpayable"
   },
@@ -104,11 +29,7 @@
     "type": "function",
     "name": "getTaskStatus",
     "inputs": [
-      {
-        "name": "taskIndex",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
+      { "name": "taskId", "type": "bytes32", "internalType": "bytes32" }
     ],
     "outputs": [
       {
@@ -121,45 +42,32 @@
   },
   {
     "type": "function",
-    "name": "isTaskResponded",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
+    "name": "nonce",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "respondTask",
     "inputs": [
-      {
-        "name": "taskIndex",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "result",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "proof",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
+      { "name": "taskId", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "result", "type": "uint256", "internalType": "uint256" },
+      { "name": "epoch", "type": "uint48", "internalType": "uint48" },
+      { "name": "proof", "type": "bytes", "internalType": "bytes" }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "responses",
+    "inputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
+    "outputs": [
+      { "name": "answeredAt", "type": "uint48", "internalType": "uint48" },
+      { "name": "answer", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -176,26 +84,25 @@
   },
   {
     "type": "function",
-    "name": "tasksCount",
-    "inputs": [],
+    "name": "tasks",
+    "inputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
     "outputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
+      { "name": "numberA", "type": "uint256", "internalType": "uint256" },
+      { "name": "numberB", "type": "uint256", "internalType": "uint256" },
+      { "name": "nonce", "type": "uint256", "internalType": "uint256" },
+      { "name": "createdAt", "type": "uint48", "internalType": "uint48" }
     ],
     "stateMutability": "view"
   },
   {
     "type": "event",
-    "name": "NewTaskCreated",
+    "name": "CreateTask",
     "inputs": [
       {
-        "name": "taskIndex",
-        "type": "uint32",
+        "name": "taskId",
+        "type": "bytes32",
         "indexed": true,
-        "internalType": "uint32"
+        "internalType": "bytes32"
       },
       {
         "name": "task",
@@ -203,26 +110,10 @@
         "indexed": false,
         "internalType": "struct SumTask.Task",
         "components": [
-          {
-            "name": "numberA",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "numberB",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "taskCreatedBlock",
-            "type": "uint32",
-            "internalType": "uint32"
-          },
-          {
-            "name": "requiredEpoch",
-            "type": "uint48",
-            "internalType": "uint48"
-          }
+          { "name": "numberA", "type": "uint256", "internalType": "uint256" },
+          { "name": "numberB", "type": "uint256", "internalType": "uint256" },
+          { "name": "nonce", "type": "uint256", "internalType": "uint256" },
+          { "name": "createdAt", "type": "uint48", "internalType": "uint48" }
         ]
       }
     ],
@@ -230,21 +121,32 @@
   },
   {
     "type": "event",
-    "name": "TaskResponded",
+    "name": "RespondTask",
     "inputs": [
       {
-        "name": "taskIndex",
-        "type": "uint32",
+        "name": "taskId",
+        "type": "bytes32",
         "indexed": true,
-        "internalType": "uint32"
+        "internalType": "bytes32"
       },
       {
-        "name": "result",
-        "type": "uint256",
+        "name": "response",
+        "type": "tuple",
         "indexed": false,
-        "internalType": "uint256"
+        "internalType": "struct SumTask.Response",
+        "components": [
+          {
+            "name": "answeredAt",
+            "type": "uint48",
+            "internalType": "uint48"
+          },
+          { "name": "answer", "type": "uint256", "internalType": "uint256" }
+        ]
       }
     ],
     "anonymous": false
-  }
+  },
+  { "type": "error", "name": "AlreadyResponded", "inputs": [] },
+  { "type": "error", "name": "InvalidQuorumSignature", "inputs": [] },
+  { "type": "error", "name": "InvalidVerifyingEpoch", "inputs": [] }
 ]

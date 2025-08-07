@@ -10,6 +10,10 @@ contract SettlementMock {
         return 100;
     }
 
+    function getCaptureTimestampFromValSetHeaderAt(uint48) public pure returns (uint48) {
+        return 1753887460;
+    }
+
     function getLastCommittedHeaderEpoch() public pure returns (uint48) {
         return 1;
     }

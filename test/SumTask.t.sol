@@ -14,12 +14,14 @@ contract SumTaskTest is Test {
 
     function test_CreateTask() public {
         sumTask.createTask(50, 50);
-        assertEq(sumTask.tasksCount(), 1);
+        assertEq(sumTask.nonce(), 1);
     }
 
     function test_RespondToTask() public {
-        sumTask.createTask(50, 50);
-        sumTask.respondTask(0, 100, new bytes(0));
-        assertEq(sumTask.allTaskResults(0), 100);
+        bytes32 taskId = sumTask.createTask(50, 50);
+        sumTask.respondTask(taskId, 100, 1, new bytes(0));
+        (uint48 answeredAt, uint256 answer) = sumTask.responses(taskId);
+        assertEq(answer, 100);
+        assertEq(answeredAt, uint48(block.timestamp));
     }
 }

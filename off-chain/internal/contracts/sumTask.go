@@ -29,17 +29,23 @@ var (
 	_ = abi.ConvertType
 )
 
+// SumTaskResponse is an auto generated low-level Go binding around an user-defined struct.
+type SumTaskResponse struct {
+	AnsweredAt *big.Int
+	Answer     *big.Int
+}
+
 // SumTaskTask is an auto generated low-level Go binding around an user-defined struct.
 type SumTaskTask struct {
-	NumberA          *big.Int
-	NumberB          *big.Int
-	TaskCreatedBlock uint32
-	RequiredEpoch    *big.Int
+	NumberA   *big.Int
+	NumberB   *big.Int
+	Nonce     *big.Int
+	CreatedAt *big.Int
 }
 
 // SumTaskMetaData contains all meta data concerning the SumTask contract.
 var SumTaskMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"constructor\",\"inputs\":[{\"name\":\"_settlement\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"TASK_RESPONSE_WINDOW_BLOCK\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"allTaskResults\",\"inputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"allTasks\",\"inputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"taskCreatedBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"requiredEpoch\",\"type\":\"uint48\",\"internalType\":\"uint48\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"createTask\",\"inputs\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"getTaskStatus\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint8\",\"internalType\":\"enumSumTask.TaskStatus\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isTaskResponded\",\"inputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"respondTask\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"result\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"settlement\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"contractISettlement\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"tasksCount\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"event\",\"name\":\"NewTaskCreated\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"indexed\":true,\"internalType\":\"uint32\"},{\"name\":\"task\",\"type\":\"tuple\",\"indexed\":false,\"internalType\":\"structSumTask.Task\",\"components\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"taskCreatedBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"requiredEpoch\",\"type\":\"uint48\",\"internalType\":\"uint48\"}]}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"TaskResponded\",\"inputs\":[{\"name\":\"taskIndex\",\"type\":\"uint32\",\"indexed\":true,\"internalType\":\"uint32\"},{\"name\":\"result\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false}]",
+	ABI: "[{\"type\":\"constructor\",\"inputs\":[{\"name\":\"_settlement\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"TASK_EXPIRY\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"createTask\",\"inputs\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"taskId\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"getTaskStatus\",\"inputs\":[{\"name\":\"taskId\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint8\",\"internalType\":\"enumSumTask.TaskStatus\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"nonce\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"respondTask\",\"inputs\":[{\"name\":\"taskId\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"result\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"epoch\",\"type\":\"uint48\",\"internalType\":\"uint48\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"responses\",\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[{\"name\":\"answeredAt\",\"type\":\"uint48\",\"internalType\":\"uint48\"},{\"name\":\"answer\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"settlement\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"contractISettlement\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"tasks\",\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"nonce\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"createdAt\",\"type\":\"uint48\",\"internalType\":\"uint48\"}],\"stateMutability\":\"view\"},{\"type\":\"event\",\"name\":\"CreateTask\",\"inputs\":[{\"name\":\"taskId\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"task\",\"type\":\"tuple\",\"indexed\":false,\"internalType\":\"structSumTask.Task\",\"components\":[{\"name\":\"numberA\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"numberB\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"nonce\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"createdAt\",\"type\":\"uint48\",\"internalType\":\"uint48\"}]}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"RespondTask\",\"inputs\":[{\"name\":\"taskId\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"response\",\"type\":\"tuple\",\"indexed\":false,\"internalType\":\"structSumTask.Response\",\"components\":[{\"name\":\"answeredAt\",\"type\":\"uint48\",\"internalType\":\"uint48\"},{\"name\":\"answer\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AlreadyResponded\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"InvalidQuorumSignature\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"InvalidVerifyingEpoch\",\"inputs\":[]}]",
 }
 
 // SumTaskABI is the input ABI used to generate the binding from.
@@ -188,12 +194,12 @@ func (_SumTask *SumTaskTransactorRaw) Transact(opts *bind.TransactOpts, method s
 	return _SumTask.Contract.contract.Transact(opts, method, params...)
 }
 
-// TASKRESPONSEWINDOWBLOCK is a free data retrieval call binding the contract method 0x1ad43189.
+// TASKEXPIRY is a free data retrieval call binding the contract method 0x240697b6.
 //
-// Solidity: function TASK_RESPONSE_WINDOW_BLOCK() view returns(uint32)
-func (_SumTask *SumTaskCaller) TASKRESPONSEWINDOWBLOCK(opts *bind.CallOpts) (uint32, error) {
+// Solidity: function TASK_EXPIRY() view returns(uint32)
+func (_SumTask *SumTaskCaller) TASKEXPIRY(opts *bind.CallOpts) (uint32, error) {
 	var out []interface{}
-	err := _SumTask.contract.Call(opts, &out, "TASK_RESPONSE_WINDOW_BLOCK")
+	err := _SumTask.contract.Call(opts, &out, "TASK_EXPIRY")
 
 	if err != nil {
 		return *new(uint32), err
@@ -205,112 +211,26 @@ func (_SumTask *SumTaskCaller) TASKRESPONSEWINDOWBLOCK(opts *bind.CallOpts) (uin
 
 }
 
-// TASKRESPONSEWINDOWBLOCK is a free data retrieval call binding the contract method 0x1ad43189.
+// TASKEXPIRY is a free data retrieval call binding the contract method 0x240697b6.
 //
-// Solidity: function TASK_RESPONSE_WINDOW_BLOCK() view returns(uint32)
-func (_SumTask *SumTaskSession) TASKRESPONSEWINDOWBLOCK() (uint32, error) {
-	return _SumTask.Contract.TASKRESPONSEWINDOWBLOCK(&_SumTask.CallOpts)
+// Solidity: function TASK_EXPIRY() view returns(uint32)
+func (_SumTask *SumTaskSession) TASKEXPIRY() (uint32, error) {
+	return _SumTask.Contract.TASKEXPIRY(&_SumTask.CallOpts)
 }
 
-// TASKRESPONSEWINDOWBLOCK is a free data retrieval call binding the contract method 0x1ad43189.
+// TASKEXPIRY is a free data retrieval call binding the contract method 0x240697b6.
 //
-// Solidity: function TASK_RESPONSE_WINDOW_BLOCK() view returns(uint32)
-func (_SumTask *SumTaskCallerSession) TASKRESPONSEWINDOWBLOCK() (uint32, error) {
-	return _SumTask.Contract.TASKRESPONSEWINDOWBLOCK(&_SumTask.CallOpts)
+// Solidity: function TASK_EXPIRY() view returns(uint32)
+func (_SumTask *SumTaskCallerSession) TASKEXPIRY() (uint32, error) {
+	return _SumTask.Contract.TASKEXPIRY(&_SumTask.CallOpts)
 }
 
-// AllTaskResults is a free data retrieval call binding the contract method 0xd3879c37.
+// GetTaskStatus is a free data retrieval call binding the contract method 0x2bf6cc79.
 //
-// Solidity: function allTaskResults(uint32 ) view returns(uint256)
-func (_SumTask *SumTaskCaller) AllTaskResults(opts *bind.CallOpts, arg0 uint32) (*big.Int, error) {
+// Solidity: function getTaskStatus(bytes32 taskId) view returns(uint8)
+func (_SumTask *SumTaskCaller) GetTaskStatus(opts *bind.CallOpts, taskId [32]byte) (uint8, error) {
 	var out []interface{}
-	err := _SumTask.contract.Call(opts, &out, "allTaskResults", arg0)
-
-	if err != nil {
-		return *new(*big.Int), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-
-	return out0, err
-
-}
-
-// AllTaskResults is a free data retrieval call binding the contract method 0xd3879c37.
-//
-// Solidity: function allTaskResults(uint32 ) view returns(uint256)
-func (_SumTask *SumTaskSession) AllTaskResults(arg0 uint32) (*big.Int, error) {
-	return _SumTask.Contract.AllTaskResults(&_SumTask.CallOpts, arg0)
-}
-
-// AllTaskResults is a free data retrieval call binding the contract method 0xd3879c37.
-//
-// Solidity: function allTaskResults(uint32 ) view returns(uint256)
-func (_SumTask *SumTaskCallerSession) AllTaskResults(arg0 uint32) (*big.Int, error) {
-	return _SumTask.Contract.AllTaskResults(&_SumTask.CallOpts, arg0)
-}
-
-// AllTasks is a free data retrieval call binding the contract method 0x82ee72e2.
-//
-// Solidity: function allTasks(uint32 ) view returns(uint256 numberA, uint256 numberB, uint32 taskCreatedBlock, uint48 requiredEpoch)
-func (_SumTask *SumTaskCaller) AllTasks(opts *bind.CallOpts, arg0 uint32) (struct {
-	NumberA          *big.Int
-	NumberB          *big.Int
-	TaskCreatedBlock uint32
-	RequiredEpoch    *big.Int
-}, error) {
-	var out []interface{}
-	err := _SumTask.contract.Call(opts, &out, "allTasks", arg0)
-
-	outstruct := new(struct {
-		NumberA          *big.Int
-		NumberB          *big.Int
-		TaskCreatedBlock uint32
-		RequiredEpoch    *big.Int
-	})
-	if err != nil {
-		return *outstruct, err
-	}
-
-	outstruct.NumberA = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	outstruct.NumberB = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
-	outstruct.TaskCreatedBlock = *abi.ConvertType(out[2], new(uint32)).(*uint32)
-	outstruct.RequiredEpoch = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
-
-	return *outstruct, err
-
-}
-
-// AllTasks is a free data retrieval call binding the contract method 0x82ee72e2.
-//
-// Solidity: function allTasks(uint32 ) view returns(uint256 numberA, uint256 numberB, uint32 taskCreatedBlock, uint48 requiredEpoch)
-func (_SumTask *SumTaskSession) AllTasks(arg0 uint32) (struct {
-	NumberA          *big.Int
-	NumberB          *big.Int
-	TaskCreatedBlock uint32
-	RequiredEpoch    *big.Int
-}, error) {
-	return _SumTask.Contract.AllTasks(&_SumTask.CallOpts, arg0)
-}
-
-// AllTasks is a free data retrieval call binding the contract method 0x82ee72e2.
-//
-// Solidity: function allTasks(uint32 ) view returns(uint256 numberA, uint256 numberB, uint32 taskCreatedBlock, uint48 requiredEpoch)
-func (_SumTask *SumTaskCallerSession) AllTasks(arg0 uint32) (struct {
-	NumberA          *big.Int
-	NumberB          *big.Int
-	TaskCreatedBlock uint32
-	RequiredEpoch    *big.Int
-}, error) {
-	return _SumTask.Contract.AllTasks(&_SumTask.CallOpts, arg0)
-}
-
-// GetTaskStatus is a free data retrieval call binding the contract method 0x8282e7f0.
-//
-// Solidity: function getTaskStatus(uint32 taskIndex) view returns(uint8)
-func (_SumTask *SumTaskCaller) GetTaskStatus(opts *bind.CallOpts, taskIndex uint32) (uint8, error) {
-	var out []interface{}
-	err := _SumTask.contract.Call(opts, &out, "getTaskStatus", taskIndex)
+	err := _SumTask.contract.Call(opts, &out, "getTaskStatus", taskId)
 
 	if err != nil {
 		return *new(uint8), err
@@ -322,49 +242,94 @@ func (_SumTask *SumTaskCaller) GetTaskStatus(opts *bind.CallOpts, taskIndex uint
 
 }
 
-// GetTaskStatus is a free data retrieval call binding the contract method 0x8282e7f0.
+// GetTaskStatus is a free data retrieval call binding the contract method 0x2bf6cc79.
 //
-// Solidity: function getTaskStatus(uint32 taskIndex) view returns(uint8)
-func (_SumTask *SumTaskSession) GetTaskStatus(taskIndex uint32) (uint8, error) {
-	return _SumTask.Contract.GetTaskStatus(&_SumTask.CallOpts, taskIndex)
+// Solidity: function getTaskStatus(bytes32 taskId) view returns(uint8)
+func (_SumTask *SumTaskSession) GetTaskStatus(taskId [32]byte) (uint8, error) {
+	return _SumTask.Contract.GetTaskStatus(&_SumTask.CallOpts, taskId)
 }
 
-// GetTaskStatus is a free data retrieval call binding the contract method 0x8282e7f0.
+// GetTaskStatus is a free data retrieval call binding the contract method 0x2bf6cc79.
 //
-// Solidity: function getTaskStatus(uint32 taskIndex) view returns(uint8)
-func (_SumTask *SumTaskCallerSession) GetTaskStatus(taskIndex uint32) (uint8, error) {
-	return _SumTask.Contract.GetTaskStatus(&_SumTask.CallOpts, taskIndex)
+// Solidity: function getTaskStatus(bytes32 taskId) view returns(uint8)
+func (_SumTask *SumTaskCallerSession) GetTaskStatus(taskId [32]byte) (uint8, error) {
+	return _SumTask.Contract.GetTaskStatus(&_SumTask.CallOpts, taskId)
 }
 
-// IsTaskResponded is a free data retrieval call binding the contract method 0x667f0f29.
+// Nonce is a free data retrieval call binding the contract method 0xaffed0e0.
 //
-// Solidity: function isTaskResponded(uint32 ) view returns(bool)
-func (_SumTask *SumTaskCaller) IsTaskResponded(opts *bind.CallOpts, arg0 uint32) (bool, error) {
+// Solidity: function nonce() view returns(uint256)
+func (_SumTask *SumTaskCaller) Nonce(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
-	err := _SumTask.contract.Call(opts, &out, "isTaskResponded", arg0)
+	err := _SumTask.contract.Call(opts, &out, "nonce")
 
 	if err != nil {
-		return *new(bool), err
+		return *new(*big.Int), err
 	}
 
-	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
 }
 
-// IsTaskResponded is a free data retrieval call binding the contract method 0x667f0f29.
+// Nonce is a free data retrieval call binding the contract method 0xaffed0e0.
 //
-// Solidity: function isTaskResponded(uint32 ) view returns(bool)
-func (_SumTask *SumTaskSession) IsTaskResponded(arg0 uint32) (bool, error) {
-	return _SumTask.Contract.IsTaskResponded(&_SumTask.CallOpts, arg0)
+// Solidity: function nonce() view returns(uint256)
+func (_SumTask *SumTaskSession) Nonce() (*big.Int, error) {
+	return _SumTask.Contract.Nonce(&_SumTask.CallOpts)
 }
 
-// IsTaskResponded is a free data retrieval call binding the contract method 0x667f0f29.
+// Nonce is a free data retrieval call binding the contract method 0xaffed0e0.
 //
-// Solidity: function isTaskResponded(uint32 ) view returns(bool)
-func (_SumTask *SumTaskCallerSession) IsTaskResponded(arg0 uint32) (bool, error) {
-	return _SumTask.Contract.IsTaskResponded(&_SumTask.CallOpts, arg0)
+// Solidity: function nonce() view returns(uint256)
+func (_SumTask *SumTaskCallerSession) Nonce() (*big.Int, error) {
+	return _SumTask.Contract.Nonce(&_SumTask.CallOpts)
+}
+
+// Responses is a free data retrieval call binding the contract method 0x72164a6c.
+//
+// Solidity: function responses(bytes32 ) view returns(uint48 answeredAt, uint256 answer)
+func (_SumTask *SumTaskCaller) Responses(opts *bind.CallOpts, arg0 [32]byte) (struct {
+	AnsweredAt *big.Int
+	Answer     *big.Int
+}, error) {
+	var out []interface{}
+	err := _SumTask.contract.Call(opts, &out, "responses", arg0)
+
+	outstruct := new(struct {
+		AnsweredAt *big.Int
+		Answer     *big.Int
+	})
+	if err != nil {
+		return *outstruct, err
+	}
+
+	outstruct.AnsweredAt = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	outstruct.Answer = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+
+	return *outstruct, err
+
+}
+
+// Responses is a free data retrieval call binding the contract method 0x72164a6c.
+//
+// Solidity: function responses(bytes32 ) view returns(uint48 answeredAt, uint256 answer)
+func (_SumTask *SumTaskSession) Responses(arg0 [32]byte) (struct {
+	AnsweredAt *big.Int
+	Answer     *big.Int
+}, error) {
+	return _SumTask.Contract.Responses(&_SumTask.CallOpts, arg0)
+}
+
+// Responses is a free data retrieval call binding the contract method 0x72164a6c.
+//
+// Solidity: function responses(bytes32 ) view returns(uint48 answeredAt, uint256 answer)
+func (_SumTask *SumTaskCallerSession) Responses(arg0 [32]byte) (struct {
+	AnsweredAt *big.Int
+	Answer     *big.Int
+}, error) {
+	return _SumTask.Contract.Responses(&_SumTask.CallOpts, arg0)
 }
 
 // Settlement is a free data retrieval call binding the contract method 0x51160630.
@@ -398,82 +363,106 @@ func (_SumTask *SumTaskCallerSession) Settlement() (common.Address, error) {
 	return _SumTask.Contract.Settlement(&_SumTask.CallOpts)
 }
 
-// TasksCount is a free data retrieval call binding the contract method 0xbb6a0f07.
+// Tasks is a free data retrieval call binding the contract method 0xe579f500.
 //
-// Solidity: function tasksCount() view returns(uint32)
-func (_SumTask *SumTaskCaller) TasksCount(opts *bind.CallOpts) (uint32, error) {
+// Solidity: function tasks(bytes32 ) view returns(uint256 numberA, uint256 numberB, uint256 nonce, uint48 createdAt)
+func (_SumTask *SumTaskCaller) Tasks(opts *bind.CallOpts, arg0 [32]byte) (struct {
+	NumberA   *big.Int
+	NumberB   *big.Int
+	Nonce     *big.Int
+	CreatedAt *big.Int
+}, error) {
 	var out []interface{}
-	err := _SumTask.contract.Call(opts, &out, "tasksCount")
+	err := _SumTask.contract.Call(opts, &out, "tasks", arg0)
 
+	outstruct := new(struct {
+		NumberA   *big.Int
+		NumberB   *big.Int
+		Nonce     *big.Int
+		CreatedAt *big.Int
+	})
 	if err != nil {
-		return *new(uint32), err
+		return *outstruct, err
 	}
 
-	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
+	outstruct.NumberA = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	outstruct.NumberB = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+	outstruct.Nonce = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
+	outstruct.CreatedAt = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 
-	return out0, err
+	return *outstruct, err
 
 }
 
-// TasksCount is a free data retrieval call binding the contract method 0xbb6a0f07.
+// Tasks is a free data retrieval call binding the contract method 0xe579f500.
 //
-// Solidity: function tasksCount() view returns(uint32)
-func (_SumTask *SumTaskSession) TasksCount() (uint32, error) {
-	return _SumTask.Contract.TasksCount(&_SumTask.CallOpts)
+// Solidity: function tasks(bytes32 ) view returns(uint256 numberA, uint256 numberB, uint256 nonce, uint48 createdAt)
+func (_SumTask *SumTaskSession) Tasks(arg0 [32]byte) (struct {
+	NumberA   *big.Int
+	NumberB   *big.Int
+	Nonce     *big.Int
+	CreatedAt *big.Int
+}, error) {
+	return _SumTask.Contract.Tasks(&_SumTask.CallOpts, arg0)
 }
 
-// TasksCount is a free data retrieval call binding the contract method 0xbb6a0f07.
+// Tasks is a free data retrieval call binding the contract method 0xe579f500.
 //
-// Solidity: function tasksCount() view returns(uint32)
-func (_SumTask *SumTaskCallerSession) TasksCount() (uint32, error) {
-	return _SumTask.Contract.TasksCount(&_SumTask.CallOpts)
+// Solidity: function tasks(bytes32 ) view returns(uint256 numberA, uint256 numberB, uint256 nonce, uint48 createdAt)
+func (_SumTask *SumTaskCallerSession) Tasks(arg0 [32]byte) (struct {
+	NumberA   *big.Int
+	NumberB   *big.Int
+	Nonce     *big.Int
+	CreatedAt *big.Int
+}, error) {
+	return _SumTask.Contract.Tasks(&_SumTask.CallOpts, arg0)
 }
 
 // CreateTask is a paid mutator transaction binding the contract method 0xe75b2378.
 //
-// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(uint32)
+// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(bytes32 taskId)
 func (_SumTask *SumTaskTransactor) CreateTask(opts *bind.TransactOpts, numberA *big.Int, numberB *big.Int) (*types.Transaction, error) {
 	return _SumTask.contract.Transact(opts, "createTask", numberA, numberB)
 }
 
 // CreateTask is a paid mutator transaction binding the contract method 0xe75b2378.
 //
-// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(uint32)
+// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(bytes32 taskId)
 func (_SumTask *SumTaskSession) CreateTask(numberA *big.Int, numberB *big.Int) (*types.Transaction, error) {
 	return _SumTask.Contract.CreateTask(&_SumTask.TransactOpts, numberA, numberB)
 }
 
 // CreateTask is a paid mutator transaction binding the contract method 0xe75b2378.
 //
-// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(uint32)
+// Solidity: function createTask(uint256 numberA, uint256 numberB) returns(bytes32 taskId)
 func (_SumTask *SumTaskTransactorSession) CreateTask(numberA *big.Int, numberB *big.Int) (*types.Transaction, error) {
 	return _SumTask.Contract.CreateTask(&_SumTask.TransactOpts, numberA, numberB)
 }
 
-// RespondTask is a paid mutator transaction binding the contract method 0xd181bbbd.
+// RespondTask is a paid mutator transaction binding the contract method 0xc92914cd.
 //
-// Solidity: function respondTask(uint32 taskIndex, uint256 result, bytes proof) returns()
-func (_SumTask *SumTaskTransactor) RespondTask(opts *bind.TransactOpts, taskIndex uint32, result *big.Int, proof []byte) (*types.Transaction, error) {
-	return _SumTask.contract.Transact(opts, "respondTask", taskIndex, result, proof)
+// Solidity: function respondTask(bytes32 taskId, uint256 result, uint48 epoch, bytes proof) returns()
+func (_SumTask *SumTaskTransactor) RespondTask(opts *bind.TransactOpts, taskId [32]byte, result *big.Int, epoch *big.Int, proof []byte) (*types.Transaction, error) {
+	return _SumTask.contract.Transact(opts, "respondTask", taskId, result, epoch, proof)
 }
 
-// RespondTask is a paid mutator transaction binding the contract method 0xd181bbbd.
+// RespondTask is a paid mutator transaction binding the contract method 0xc92914cd.
 //
-// Solidity: function respondTask(uint32 taskIndex, uint256 result, bytes proof) returns()
-func (_SumTask *SumTaskSession) RespondTask(taskIndex uint32, result *big.Int, proof []byte) (*types.Transaction, error) {
-	return _SumTask.Contract.RespondTask(&_SumTask.TransactOpts, taskIndex, result, proof)
+// Solidity: function respondTask(bytes32 taskId, uint256 result, uint48 epoch, bytes proof) returns()
+func (_SumTask *SumTaskSession) RespondTask(taskId [32]byte, result *big.Int, epoch *big.Int, proof []byte) (*types.Transaction, error) {
+	return _SumTask.Contract.RespondTask(&_SumTask.TransactOpts, taskId, result, epoch, proof)
 }
 
-// RespondTask is a paid mutator transaction binding the contract method 0xd181bbbd.
+// RespondTask is a paid mutator transaction binding the contract method 0xc92914cd.
 //
-// Solidity: function respondTask(uint32 taskIndex, uint256 result, bytes proof) returns()
-func (_SumTask *SumTaskTransactorSession) RespondTask(taskIndex uint32, result *big.Int, proof []byte) (*types.Transaction, error) {
-	return _SumTask.Contract.RespondTask(&_SumTask.TransactOpts, taskIndex, result, proof)
+// Solidity: function respondTask(bytes32 taskId, uint256 result, uint48 epoch, bytes proof) returns()
+func (_SumTask *SumTaskTransactorSession) RespondTask(taskId [32]byte, result *big.Int, epoch *big.Int, proof []byte) (*types.Transaction, error) {
+	return _SumTask.Contract.RespondTask(&_SumTask.TransactOpts, taskId, result, epoch, proof)
 }
 
-// SumTaskNewTaskCreatedIterator is returned from FilterNewTaskCreated and is used to iterate over the raw logs and unpacked data for NewTaskCreated events raised by the SumTask contract.
-type SumTaskNewTaskCreatedIterator struct {
-	Event *SumTaskNewTaskCreated // Event containing the contract specifics and raw log
+// SumTaskCreateTaskIterator is returned from FilterCreateTask and is used to iterate over the raw logs and unpacked data for CreateTask events raised by the SumTask contract.
+type SumTaskCreateTaskIterator struct {
+	Event *SumTaskCreateTask // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -487,7 +476,7 @@ type SumTaskNewTaskCreatedIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *SumTaskNewTaskCreatedIterator) Next() bool {
+func (it *SumTaskCreateTaskIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -496,7 +485,7 @@ func (it *SumTaskNewTaskCreatedIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(SumTaskNewTaskCreated)
+			it.Event = new(SumTaskCreateTask)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -511,7 +500,7 @@ func (it *SumTaskNewTaskCreatedIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(SumTaskNewTaskCreated)
+		it.Event = new(SumTaskCreateTask)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -527,52 +516,52 @@ func (it *SumTaskNewTaskCreatedIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *SumTaskNewTaskCreatedIterator) Error() error {
+func (it *SumTaskCreateTaskIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *SumTaskNewTaskCreatedIterator) Close() error {
+func (it *SumTaskCreateTaskIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// SumTaskNewTaskCreated represents a NewTaskCreated event raised by the SumTask contract.
-type SumTaskNewTaskCreated struct {
-	TaskIndex uint32
-	Task      SumTaskTask
-	Raw       types.Log // Blockchain specific contextual infos
+// SumTaskCreateTask represents a CreateTask event raised by the SumTask contract.
+type SumTaskCreateTask struct {
+	TaskId [32]byte
+	Task   SumTaskTask
+	Raw    types.Log // Blockchain specific contextual infos
 }
 
-// FilterNewTaskCreated is a free log retrieval operation binding the contract event 0xc0cb9c28c78053682611e0a1398edcb2674b6fad7bee9358f7cfe8b15c11c46e.
+// FilterCreateTask is a free log retrieval operation binding the contract event 0x091f91724daf92df11de4c7b494af095ec9c1325865974e9750636fbe5373677.
 //
-// Solidity: event NewTaskCreated(uint32 indexed taskIndex, (uint256,uint256,uint32,uint48) task)
-func (_SumTask *SumTaskFilterer) FilterNewTaskCreated(opts *bind.FilterOpts, taskIndex []uint32) (*SumTaskNewTaskCreatedIterator, error) {
+// Solidity: event CreateTask(bytes32 indexed taskId, (uint256,uint256,uint256,uint48) task)
+func (_SumTask *SumTaskFilterer) FilterCreateTask(opts *bind.FilterOpts, taskId [][32]byte) (*SumTaskCreateTaskIterator, error) {
 
-	var taskIndexRule []interface{}
-	for _, taskIndexItem := range taskIndex {
-		taskIndexRule = append(taskIndexRule, taskIndexItem)
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
 	}
 
-	logs, sub, err := _SumTask.contract.FilterLogs(opts, "NewTaskCreated", taskIndexRule)
+	logs, sub, err := _SumTask.contract.FilterLogs(opts, "CreateTask", taskIdRule)
 	if err != nil {
 		return nil, err
 	}
-	return &SumTaskNewTaskCreatedIterator{contract: _SumTask.contract, event: "NewTaskCreated", logs: logs, sub: sub}, nil
+	return &SumTaskCreateTaskIterator{contract: _SumTask.contract, event: "CreateTask", logs: logs, sub: sub}, nil
 }
 
-// WatchNewTaskCreated is a free log subscription operation binding the contract event 0xc0cb9c28c78053682611e0a1398edcb2674b6fad7bee9358f7cfe8b15c11c46e.
+// WatchCreateTask is a free log subscription operation binding the contract event 0x091f91724daf92df11de4c7b494af095ec9c1325865974e9750636fbe5373677.
 //
-// Solidity: event NewTaskCreated(uint32 indexed taskIndex, (uint256,uint256,uint32,uint48) task)
-func (_SumTask *SumTaskFilterer) WatchNewTaskCreated(opts *bind.WatchOpts, sink chan<- *SumTaskNewTaskCreated, taskIndex []uint32) (event.Subscription, error) {
+// Solidity: event CreateTask(bytes32 indexed taskId, (uint256,uint256,uint256,uint48) task)
+func (_SumTask *SumTaskFilterer) WatchCreateTask(opts *bind.WatchOpts, sink chan<- *SumTaskCreateTask, taskId [][32]byte) (event.Subscription, error) {
 
-	var taskIndexRule []interface{}
-	for _, taskIndexItem := range taskIndex {
-		taskIndexRule = append(taskIndexRule, taskIndexItem)
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
 	}
 
-	logs, sub, err := _SumTask.contract.WatchLogs(opts, "NewTaskCreated", taskIndexRule)
+	logs, sub, err := _SumTask.contract.WatchLogs(opts, "CreateTask", taskIdRule)
 	if err != nil {
 		return nil, err
 	}
@@ -582,8 +571,8 @@ func (_SumTask *SumTaskFilterer) WatchNewTaskCreated(opts *bind.WatchOpts, sink 
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(SumTaskNewTaskCreated)
-				if err := _SumTask.contract.UnpackLog(event, "NewTaskCreated", log); err != nil {
+				event := new(SumTaskCreateTask)
+				if err := _SumTask.contract.UnpackLog(event, "CreateTask", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -604,21 +593,21 @@ func (_SumTask *SumTaskFilterer) WatchNewTaskCreated(opts *bind.WatchOpts, sink 
 	}), nil
 }
 
-// ParseNewTaskCreated is a log parse operation binding the contract event 0xc0cb9c28c78053682611e0a1398edcb2674b6fad7bee9358f7cfe8b15c11c46e.
+// ParseCreateTask is a log parse operation binding the contract event 0x091f91724daf92df11de4c7b494af095ec9c1325865974e9750636fbe5373677.
 //
-// Solidity: event NewTaskCreated(uint32 indexed taskIndex, (uint256,uint256,uint32,uint48) task)
-func (_SumTask *SumTaskFilterer) ParseNewTaskCreated(log types.Log) (*SumTaskNewTaskCreated, error) {
-	event := new(SumTaskNewTaskCreated)
-	if err := _SumTask.contract.UnpackLog(event, "NewTaskCreated", log); err != nil {
+// Solidity: event CreateTask(bytes32 indexed taskId, (uint256,uint256,uint256,uint48) task)
+func (_SumTask *SumTaskFilterer) ParseCreateTask(log types.Log) (*SumTaskCreateTask, error) {
+	event := new(SumTaskCreateTask)
+	if err := _SumTask.contract.UnpackLog(event, "CreateTask", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
 	return event, nil
 }
 
-// SumTaskTaskRespondedIterator is returned from FilterTaskResponded and is used to iterate over the raw logs and unpacked data for TaskResponded events raised by the SumTask contract.
-type SumTaskTaskRespondedIterator struct {
-	Event *SumTaskTaskResponded // Event containing the contract specifics and raw log
+// SumTaskRespondTaskIterator is returned from FilterRespondTask and is used to iterate over the raw logs and unpacked data for RespondTask events raised by the SumTask contract.
+type SumTaskRespondTaskIterator struct {
+	Event *SumTaskRespondTask // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -632,7 +621,7 @@ type SumTaskTaskRespondedIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *SumTaskTaskRespondedIterator) Next() bool {
+func (it *SumTaskRespondTaskIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -641,7 +630,7 @@ func (it *SumTaskTaskRespondedIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(SumTaskTaskResponded)
+			it.Event = new(SumTaskRespondTask)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -656,7 +645,7 @@ func (it *SumTaskTaskRespondedIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(SumTaskTaskResponded)
+		it.Event = new(SumTaskRespondTask)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -672,52 +661,52 @@ func (it *SumTaskTaskRespondedIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *SumTaskTaskRespondedIterator) Error() error {
+func (it *SumTaskRespondTaskIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *SumTaskTaskRespondedIterator) Close() error {
+func (it *SumTaskRespondTaskIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// SumTaskTaskResponded represents a TaskResponded event raised by the SumTask contract.
-type SumTaskTaskResponded struct {
-	TaskIndex uint32
-	Result    *big.Int
-	Raw       types.Log // Blockchain specific contextual infos
+// SumTaskRespondTask represents a RespondTask event raised by the SumTask contract.
+type SumTaskRespondTask struct {
+	TaskId   [32]byte
+	Response SumTaskResponse
+	Raw      types.Log // Blockchain specific contextual infos
 }
 
-// FilterTaskResponded is a free log retrieval operation binding the contract event 0x9d8cbde9c8bf25180d70df692a5985b2234c9c0fca52c90ec57f7f583186b028.
+// FilterRespondTask is a free log retrieval operation binding the contract event 0xfc4f6d5b11d191a9cdec60e7a5819b4695dba8d8365e7afb1f24b159ceb7e287.
 //
-// Solidity: event TaskResponded(uint32 indexed taskIndex, uint256 result)
-func (_SumTask *SumTaskFilterer) FilterTaskResponded(opts *bind.FilterOpts, taskIndex []uint32) (*SumTaskTaskRespondedIterator, error) {
+// Solidity: event RespondTask(bytes32 indexed taskId, (uint48,uint256) response)
+func (_SumTask *SumTaskFilterer) FilterRespondTask(opts *bind.FilterOpts, taskId [][32]byte) (*SumTaskRespondTaskIterator, error) {
 
-	var taskIndexRule []interface{}
-	for _, taskIndexItem := range taskIndex {
-		taskIndexRule = append(taskIndexRule, taskIndexItem)
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
 	}
 
-	logs, sub, err := _SumTask.contract.FilterLogs(opts, "TaskResponded", taskIndexRule)
+	logs, sub, err := _SumTask.contract.FilterLogs(opts, "RespondTask", taskIdRule)
 	if err != nil {
 		return nil, err
 	}
-	return &SumTaskTaskRespondedIterator{contract: _SumTask.contract, event: "TaskResponded", logs: logs, sub: sub}, nil
+	return &SumTaskRespondTaskIterator{contract: _SumTask.contract, event: "RespondTask", logs: logs, sub: sub}, nil
 }
 
-// WatchTaskResponded is a free log subscription operation binding the contract event 0x9d8cbde9c8bf25180d70df692a5985b2234c9c0fca52c90ec57f7f583186b028.
+// WatchRespondTask is a free log subscription operation binding the contract event 0xfc4f6d5b11d191a9cdec60e7a5819b4695dba8d8365e7afb1f24b159ceb7e287.
 //
-// Solidity: event TaskResponded(uint32 indexed taskIndex, uint256 result)
-func (_SumTask *SumTaskFilterer) WatchTaskResponded(opts *bind.WatchOpts, sink chan<- *SumTaskTaskResponded, taskIndex []uint32) (event.Subscription, error) {
+// Solidity: event RespondTask(bytes32 indexed taskId, (uint48,uint256) response)
+func (_SumTask *SumTaskFilterer) WatchRespondTask(opts *bind.WatchOpts, sink chan<- *SumTaskRespondTask, taskId [][32]byte) (event.Subscription, error) {
 
-	var taskIndexRule []interface{}
-	for _, taskIndexItem := range taskIndex {
-		taskIndexRule = append(taskIndexRule, taskIndexItem)
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
 	}
 
-	logs, sub, err := _SumTask.contract.WatchLogs(opts, "TaskResponded", taskIndexRule)
+	logs, sub, err := _SumTask.contract.WatchLogs(opts, "RespondTask", taskIdRule)
 	if err != nil {
 		return nil, err
 	}
@@ -727,8 +716,8 @@ func (_SumTask *SumTaskFilterer) WatchTaskResponded(opts *bind.WatchOpts, sink c
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(SumTaskTaskResponded)
-				if err := _SumTask.contract.UnpackLog(event, "TaskResponded", log); err != nil {
+				event := new(SumTaskRespondTask)
+				if err := _SumTask.contract.UnpackLog(event, "RespondTask", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -749,12 +738,12 @@ func (_SumTask *SumTaskFilterer) WatchTaskResponded(opts *bind.WatchOpts, sink c
 	}), nil
 }
 
-// ParseTaskResponded is a log parse operation binding the contract event 0x9d8cbde9c8bf25180d70df692a5985b2234c9c0fca52c90ec57f7f583186b028.
+// ParseRespondTask is a log parse operation binding the contract event 0xfc4f6d5b11d191a9cdec60e7a5819b4695dba8d8365e7afb1f24b159ceb7e287.
 //
-// Solidity: event TaskResponded(uint32 indexed taskIndex, uint256 result)
-func (_SumTask *SumTaskFilterer) ParseTaskResponded(log types.Log) (*SumTaskTaskResponded, error) {
-	event := new(SumTaskTaskResponded)
-	if err := _SumTask.contract.UnpackLog(event, "TaskResponded", log); err != nil {
+// Solidity: event RespondTask(bytes32 indexed taskId, (uint48,uint256) response)
+func (_SumTask *SumTaskFilterer) ParseRespondTask(log types.Log) (*SumTaskRespondTask, error) {
+	event := new(SumTaskRespondTask)
+	if err := _SumTask.contract.UnpackLog(event, "RespondTask", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

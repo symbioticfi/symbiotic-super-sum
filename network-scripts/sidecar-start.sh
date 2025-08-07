@@ -1,8 +1,12 @@
 #!/bin/sh
-echo "Waiting for driver address..."
-until [ -f /deploy-data/driver_address.txt ]; do sleep 2; done
-DRIVER_ADDRESS=$(cat /deploy-data/driver_address.txt)
-echo "Using driver address: $DRIVER_ADDRESS"
+
+apk add --no-cache jq
+
+echo "Waiting for relay_contracts.json file..."
+until [ -f /deploy-data/relay_contracts.json ]; do sleep 2; done
+
+DRIVER_ADDRESS=$(jq -r '.driver.addr' /deploy-data/relay_contracts.json)
+echo "Driver address from relay_contracts.json: $DRIVER_ADDRESS"
 
 cat > /tmp/sidecar.yaml << EOFCONFIG
 driver:
@@ -13,6 +17,7 @@ log-mode: "pretty"
 signer: true
 chains:
   - "http://anvil:8545"
+  - "http://anvil-settlement:8546"
 bootnodes:
   - /dns4/relay-sidecar-1/tcp/8880/p2p/16Uiu2HAmFUiPYAJ7bE88Q8d7Kznrw5ifrje2e5QFyt7uFPk2G3iR 
 http-listen: ":8080"

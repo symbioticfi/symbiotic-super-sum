@@ -1,12 +1,15 @@
 #!/bin/sh
+
+apk add --no-cache jq
+
 echo 'Waiting for deployment completion...'
 until [ -f /deploy-data/deployment-complete.marker ]; do sleep 2; done
 
-echo 'Waiting for driver address file...'
-until [ -f /deploy-data/driver_address.txt ]; do sleep 2; done
+echo 'Waiting for relay contracts file...'
+until [ -f /deploy-data/relay_contracts.json ]; do sleep 2; done
 
-DRIVER_ADDRESS=$(cat /deploy-data/driver_address.txt)
-echo "Driver address: $DRIVER_ADDRESS"
+DRIVER_ADDRESS=$(jq -r '.driver.addr' /deploy-data/relay_contracts.json)
+echo "Driver address from relay_contracts.json: $DRIVER_ADDRESS"
 
 MAX_RETRIES=50
 RETRY_DELAY=2
@@ -16,12 +19,12 @@ while [ $attempt -le $MAX_RETRIES ]; do
     echo "Attempt $attempt of $MAX_RETRIES: Generating network genesis..."
     
     if /app/relay_utils network \
-            --chains http://anvil:8545 \
+            --chains http://anvil:8545,http://anvil-settlement:8546 \
             --driver-address "$DRIVER_ADDRESS" \
             --driver-chainid 31337 \
           generate-genesis \
             --commit \
-            --secret-keys 31337:0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; then
+            --secret-keys 31337:0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80,31338:0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; then
         echo 'Genesis generation completed successfully!'
         
         # Create genesis completion marker
