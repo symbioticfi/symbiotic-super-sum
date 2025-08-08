@@ -3,6 +3,8 @@ cache/
 out/
 .data/
 
+node_modules/
+
 # Ignores development broadcast logs
 !/broadcast
 /broadcast/*/31337/

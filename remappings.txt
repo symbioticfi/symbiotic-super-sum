@@ -1,9 +1,8 @@
-lib/relay-contracts:@openzeppelin/contracts/=lib/relay-contracts/lib/openzeppelin-contracts/contracts/
-lib/relay-contracts:@openzeppelin/contracts-upgradeable/=lib/relay-contracts/lib/openzeppelin-contracts-upgradeable/contracts/
-lib/relay-contracts:@symbioticfi/rewards/=lib/relay-contracts/lib/rewards/
-lib/relay-contracts:@symbioticfi/core/=lib/relay-contracts/lib/core/
-lib/relay-contracts:@crypto-lib/=lib/relay-contracts/lib/crypto-lib/src/
+node_modules/@symbioticfi/relay-contracts:@openzeppelin/contracts/=node_modules/@symbioticfi/relay-contracts/node_modules/@openzeppelin/contracts/
+node_modules/@symbioticfi/relay-contracts:@openzeppelin/contracts-upgradeable/=node_modules/@symbioticfi/relay-contracts/node_modules/@openzeppelin/contracts-upgradeable/
+node_modules/@symbioticfi/relay-contracts:@symbioticfi/rewards/=node_modules/@symbioticfi/rewards/
+node_modules/@symbioticfi/relay-contracts:@symbioticfi/core/=node_modules/@symbioticfi/relay-contracts/node_modules/@symbioticfi/core/
 
-@symbioticfi/relay-contracts/=lib/relay-contracts/src/
-@symbioticfi/core-contracts/=lib/core-contracts
-@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@symbioticfi/relay-contracts/=node_modules/@symbioticfi/relay-contracts/src/
+@symbioticfi/core-contracts/=node_modules/@symbioticfi/core/
+@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/

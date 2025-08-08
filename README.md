@@ -34,6 +34,12 @@ Update submodules
 git submodule update --init --recursive
 ```
 
+Install dependencies
+
+```bash
+npm install
+```
+
 ## Running in docker
 
 ### Dependencies
