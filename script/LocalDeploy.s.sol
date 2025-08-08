@@ -80,7 +80,7 @@ contract LocalDeploy is SymbioticCoreInit {
     function run() public {
         deployer = getDeployerAddress();
 
-        SYMBIOTIC_CORE_PROJECT_ROOT = "lib/core-contracts/";
+        SYMBIOTIC_CORE_PROJECT_ROOT = "node_modules/@symbioticfi/core/";
 
         setupCore();
         setupRelayContracts();
