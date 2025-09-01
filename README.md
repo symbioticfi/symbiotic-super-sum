@@ -112,23 +112,31 @@ rm -rf data-* && cd ..
 ### Create a task
 
 ```bash
-cast send 0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf "createTask(uint256,uint256)" 2 2 \
-  --rpc-url http://127.0.0.1:8545 \
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-```
-
-### Check task result
-
-```bash
-cast call 0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf "responses(bytes32)" 0x556b8b8eec9bc205e200fe8109800d09f66774f659322c71f9df42f668d18416 \
-  --rpc-url http://127.0.0.1:8545
+taskID=$(cast send --rpc-url http://127.0.0.1:8545 --json \
+ --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+ 0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf \
+ "createTask(uint256,uint256)" 33 9 | jq -r '.logs[0].topics[1]')
 ```
 
 or
 
 ```bash
-cast call 0x0165878A594ca255338adfa4d48449f69242Eb8F "responses(bytes32)" 0x556b8b8eec9bc205e200fe8109800d09f66774f659322c71f9df42f668d18416 \
-  --rpc-url http://127.0.0.1:8546
+taskID=$(./sum-create-task.sh 33 9)
+```
+
+### Check task result
+
+```bash
+result=$(cast call --rpc-url http://127.0.0.1:8545 \
+ 0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf \
+ "responses(bytes32)" $taskID)
+cast decode-abi --json "data()(uint48,uint256)" $result | jq -r .[1] 
+```
+
+or
+
+```bash
+./sum-result.sh $taskID
 ```
 
 ### Troubleshooting
