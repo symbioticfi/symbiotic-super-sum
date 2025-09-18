@@ -37,6 +37,7 @@ import {
     KEY_TYPE_ECDSA_SECP256K1
 } from "@symbioticfi/relay-contracts/interfaces/modules/key-registry/IKeyRegistry.sol";
 
+import {ICreateX} from "./interfaces/ICreateX.sol";
 import {BN254G2} from "./utils/BN254G2.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 
@@ -76,7 +77,9 @@ contract LocalDeploy is SymbioticCoreInit {
     }
 
     bytes32 internal constant KEY_OWNERSHIP_TYPEHASH = keccak256("KeyOwnership(address operator,bytes key)");
+    address public constant CREATEX_FACTORY = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
 
+    // Configurable constants
     uint48 internal immutable EPOCH_DURATION = uint48(vm.envOr("EPOCH_TIME", uint256(60)));
     uint48 internal constant SLASHING_WINDOW = 1 days; // 1 day
     uint208 internal constant MAX_VALIDATORS_COUNT = 1000; // 1000 validators
@@ -91,6 +94,14 @@ contract LocalDeploy is SymbioticCoreInit {
     uint8 internal immutable VERIFICATION_TYPE = uint8(vm.envOr("VERIFICATION_TYPE", uint256(1)));
     uint208 internal immutable NUM_AGGREGATORS = uint208(vm.envOr("NUM_AGGREGATORS", uint256(1)));
     uint208 internal immutable NUM_COMMITTERS = uint208(vm.envOr("NUM_COMMITTERS", uint256(1)));
+
+    // CREATE3 salts
+    bytes11 public constant NETWORK_SALT = "SymNetwork";
+    bytes11 public constant VOTING_POWERS_SALT = "SymVPowers";
+    bytes11 public constant KEY_REGISTRY_SALT = "SymKeyReg";
+    bytes11 public constant SETTLEMENT_SALT = "SymSttlmnt";
+    bytes11 public constant DRIVER_SALT = "SymDriverS";
+    bytes11 public constant SUM_TASK_SALT = "SymSumTask";
 
     address internal deployer;
 
@@ -163,7 +174,13 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupNetwork() public returns (address) {
         vm.startBroadcast(deployer);
-        network = new Network(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService));
+        bytes memory networkInitCode = abi.encodePacked(
+            type(Network).creationCode,
+            abi.encode(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService))
+        );
+
+        network =
+            Network(payable(ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(NETWORK_SALT), networkInitCode)));
         address[] memory proposersAndExecutors = new address[](1);
         proposersAndExecutors[0] = deployer;
 
@@ -187,7 +204,11 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupKeyRegistry() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        KeyRegistry keyRegistry_ = new KeyRegistry{salt: "KeyRegistry"}();
+        KeyRegistry keyRegistry_ = KeyRegistry(
+            ICreateX(CREATEX_FACTORY).deployCreate3(
+                getSaltForCreate3(KEY_REGISTRY_SALT), type(KeyRegistry).creationCode
+            )
+        );
         keyRegistry_.initialize(
             IKeyRegistry.KeyRegistryInitParams({
                 ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "KeyRegistry", version: "1"})
@@ -203,10 +224,17 @@ contract LocalDeploy is SymbioticCoreInit {
         IERC20 stakingToken = IERC20(stakingTokens.get(block.chainid));
 
         vm.startBroadcast(deployer);
-        VotingPowers votingPowers_ = new VotingPowers{salt: "VotingPowers"}(
-            address(symbioticCore.operatorRegistry),
-            address(symbioticCore.vaultFactory),
-            address(symbioticCore.vaultConfigurator)
+        bytes memory votingPowersInitCode = abi.encodePacked(
+            type(VotingPowers).creationCode,
+            abi.encode(
+                address(symbioticCore.operatorRegistry),
+                address(symbioticCore.vaultFactory),
+                address(symbioticCore.vaultConfigurator)
+            )
+        );
+
+        VotingPowers votingPowers_ = VotingPowers(
+            ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(VOTING_POWERS_SALT), votingPowersInitCode)
         );
         votingPowers_.initialize(
             IVotingPowerProvider.VotingPowerProviderInitParams({
@@ -257,7 +285,9 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupSettlement() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        Settlement settlement_ = new Settlement{salt: "Settlement"}();
+        Settlement settlement_ = Settlement(
+            ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(SETTLEMENT_SALT), type(Settlement).creationCode)
+        );
 
         address verifier;
 
@@ -296,7 +326,8 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupDriver() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        Driver driver_ = new Driver{salt: "Driver"}();
+        Driver driver_ =
+            Driver(ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(DRIVER_SALT), type(Driver).creationCode));
 
         IValSetDriver.CrossChainAddress[] memory votingPowerProviders_ =
             new IValSetDriver.CrossChainAddress[](votingPowerProviders.length());
@@ -356,11 +387,13 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupSumTask() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        SumTask sumTask = new SumTask(address(settlements.get(block.chainid)));
-        sumTasks.set(block.chainid, address(sumTask));
+        bytes memory sumTaskInitCode =
+            abi.encodePacked(type(SumTask).creationCode, abi.encode(address(settlements.get(block.chainid))));
+        address sumTask = ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(SUM_TASK_SALT), sumTaskInitCode);
+        sumTasks.set(block.chainid, sumTask);
         vm.stopBroadcast();
 
-        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(sumTask)});
+        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: sumTask});
     }
 
     function logAndDumpRelayContracts() public {
@@ -522,7 +555,7 @@ contract LocalDeploy is SymbioticCoreInit {
         keyRegistry_.setKey(KEY_TYPE_BLS_BN254.getKeyTag(15), keyBytes, abi.encode(sigG1), abi.encode(g2Key));
 
         // Register BLS-BN254 key with tag 11, not related to header key tag
-        uint256 secondaryBLSKey = operator.privateKey + 10000;
+        uint256 secondaryBLSKey = operator.privateKey + 10_000;
         (g1Key, g2Key) = getBLSKeys(secondaryBLSKey);
         keyBytes = KeyBlsBn254.wrap(g1Key).toBytes();
         messageHash = keyRegistry_.hashTypedDataV4(
@@ -596,5 +629,11 @@ contract LocalDeploy is SymbioticCoreInit {
             }
             console.log("   Total voting power:", totalVotingPower);
         }
+    }
+
+    function getSaltForCreate3(
+        bytes11 salt
+    ) public view returns (bytes32) {
+        return bytes32(uint256(uint160(deployer)) << 96 | uint256(0x00) << 88 | uint256(uint88(salt)));
     }
 }
