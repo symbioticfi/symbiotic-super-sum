@@ -96,12 +96,12 @@ contract LocalDeploy is SymbioticCoreInit {
     uint208 internal immutable NUM_COMMITTERS = uint208(vm.envOr("NUM_COMMITTERS", uint256(1)));
 
     // CREATE3 salts
-    bytes11 public constant NETWORK_SALT = "SymNetwork";
-    bytes11 public constant VOTING_POWERS_SALT = "SymVPowers";
-    bytes11 public constant KEY_REGISTRY_SALT = "SymKeyReg";
-    bytes11 public constant SETTLEMENT_SALT = "SymSttlmnt";
-    bytes11 public constant DRIVER_SALT = "SymDriverS";
-    bytes11 public constant SUM_TASK_SALT = "SymSumTask";
+    bytes32 public constant NETWORK_SALT = keccak256("Network");
+    bytes32 public constant VOTING_POWERS_SALT = keccak256("VotingPowers");
+    bytes32 public constant KEY_REGISTRY_SALT = keccak256("KeyRegistry");
+    bytes32 public constant SETTLEMENT_SALT = keccak256("Settlement");
+    bytes32 public constant DRIVER_SALT = keccak256("Driver");
+    bytes32 public constant SUM_TASK_SALT = keccak256("SumTask");
 
     address internal deployer;
 
@@ -179,8 +179,7 @@ contract LocalDeploy is SymbioticCoreInit {
             abi.encode(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService))
         );
 
-        network =
-            Network(payable(ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(NETWORK_SALT), networkInitCode)));
+        network = Network(payable(ICreateX(CREATEX_FACTORY).deployCreate3(NETWORK_SALT, networkInitCode)));
         address[] memory proposersAndExecutors = new address[](1);
         proposersAndExecutors[0] = deployer;
 
@@ -204,11 +203,8 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupKeyRegistry() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        KeyRegistry keyRegistry_ = KeyRegistry(
-            ICreateX(CREATEX_FACTORY).deployCreate3(
-                getSaltForCreate3(KEY_REGISTRY_SALT), type(KeyRegistry).creationCode
-            )
-        );
+        KeyRegistry keyRegistry_ =
+            KeyRegistry(ICreateX(CREATEX_FACTORY).deployCreate3(KEY_REGISTRY_SALT, type(KeyRegistry).creationCode));
         keyRegistry_.initialize(
             IKeyRegistry.KeyRegistryInitParams({
                 ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "KeyRegistry", version: "1"})
@@ -233,9 +229,8 @@ contract LocalDeploy is SymbioticCoreInit {
             )
         );
 
-        VotingPowers votingPowers_ = VotingPowers(
-            ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(VOTING_POWERS_SALT), votingPowersInitCode)
-        );
+        VotingPowers votingPowers_ =
+            VotingPowers(ICreateX(CREATEX_FACTORY).deployCreate3(VOTING_POWERS_SALT, votingPowersInitCode));
         votingPowers_.initialize(
             IVotingPowerProvider.VotingPowerProviderInitParams({
                 networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
@@ -285,9 +280,8 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupSettlement() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        Settlement settlement_ = Settlement(
-            ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(SETTLEMENT_SALT), type(Settlement).creationCode)
-        );
+        Settlement settlement_ =
+            Settlement(ICreateX(CREATEX_FACTORY).deployCreate3(SETTLEMENT_SALT, type(Settlement).creationCode));
 
         address verifier;
 
@@ -326,8 +320,7 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupDriver() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        Driver driver_ =
-            Driver(ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(DRIVER_SALT), type(Driver).creationCode));
+        Driver driver_ = Driver(ICreateX(CREATEX_FACTORY).deployCreate3(DRIVER_SALT, type(Driver).creationCode));
 
         IValSetDriver.CrossChainAddress[] memory votingPowerProviders_ =
             new IValSetDriver.CrossChainAddress[](votingPowerProviders.length());
@@ -389,7 +382,7 @@ contract LocalDeploy is SymbioticCoreInit {
         vm.startBroadcast(deployer);
         bytes memory sumTaskInitCode =
             abi.encodePacked(type(SumTask).creationCode, abi.encode(address(settlements.get(block.chainid))));
-        address sumTask = ICreateX(CREATEX_FACTORY).deployCreate3(getSaltForCreate3(SUM_TASK_SALT), sumTaskInitCode);
+        address sumTask = ICreateX(CREATEX_FACTORY).deployCreate3(SUM_TASK_SALT, sumTaskInitCode);
         sumTasks.set(block.chainid, sumTask);
         vm.stopBroadcast();
 
@@ -629,11 +622,5 @@ contract LocalDeploy is SymbioticCoreInit {
             }
             console.log("   Total voting power:", totalVotingPower);
         }
-    }
-
-    function getSaltForCreate3(
-        bytes11 salt
-    ) public view returns (bytes32) {
-        return bytes32(uint256(uint160(deployer)) << 96 | uint256(0x00) << 88 | uint256(uint88(salt)));
     }
 }
