@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Default values
-DEFAULT_OPERATORS=4
+DEFAULT_OPERATORS=2
 DEFAULT_COMMITERS=1
 DEFAULT_AGGREGATORS=1
 MAX_OPERATORS=999
@@ -101,6 +101,11 @@ generate_docker_compose() {
     
     mkdir -p "$network_dir/deploy-data"
     
+    # Create cache and broadcast directories with proper permissions
+    print_status "Creating cache and broadcast directories..."
+    mkdir -p "$network_dir/cache" "$network_dir/broadcast"
+    chmod 755 "$network_dir/cache" "$network_dir/broadcast"
+    
     for i in $(seq 1 $operators); do
         local storage_dir="$network_dir/data-$(printf "%02d" $i)"
         mkdir -p "$storage_dir"
@@ -155,10 +160,11 @@ services:
   deployer:
     image: ghcr.io/foundry-rs/foundry:v1.3.5
     container_name: symbiotic-deployer
+    user: "1000:1000"
     volumes:
       - ../:/app
-      - ../cache:/app/cache
-      - ../broadcast:/app/broadcast
+      - ./cache:/app/cache
+      - ./broadcast:/app/broadcast
       - ./deploy-data:/deploy-data
     working_dir: /app
     command: ./network-scripts/deploy.sh
@@ -310,13 +316,13 @@ main() {
     echo "  - temp-network/data-* (storage directories)"
     echo
     print_status "To start the network, run:"
-    echo "  cd temp-network && docker compose up -d && cd .."
+    echo "  docker compose --project-directory temp-network up -d"
     echo
     print_status "To check the status, run:"
-    echo "  cd temp-network && docker compose ps && cd .."
+    echo "  docker compose --project-directory temp-network ps"
     echo
     print_status "To view logs, run:"
-    echo "  cd temp-network && docker compose logs -f"
+    echo "  docker compose --project-directory temp-network logs -f"
     echo
     print_warning "Note: The first startup may take several minutes(2-4mins) as it needs to:"
     echo "  1. Download Docker images"
