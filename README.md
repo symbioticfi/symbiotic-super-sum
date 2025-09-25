@@ -112,7 +112,7 @@ rm -rf data-* && cd ..
 ### Create a task
 
 ```bash
-cast send 0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf "createTask(uint256,uint256)" 2 2 \
+cast send 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123 "createTask(uint256,uint256)" 2 2 \
   --rpc-url http://127.0.0.1:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
@@ -122,14 +122,14 @@ cast send 0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf "createTask(uint256,uint256
 Don't forget to replace `{TASK_ID}`, you can find it in sum node's logs (e.g., `0x556b8b8eec9bc205e200fe8109800d09f66774f659322c71f9df42f668d18416`)
 
 ```bash
-cast call 0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf "responses(bytes32)" {TASK_ID} \
+cast call 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123 "responses(bytes32)" {TASK_ID} \
   --rpc-url http://127.0.0.1:8545
 ```
 
 or
 
 ```bash
-cast call 0x0165878A594ca255338adfa4d48449f69242Eb8F "responses(bytes32)" {TASK_ID} \
+cast call 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123 "responses(bytes32)" {TASK_ID} \
   --rpc-url http://127.0.0.1:8546
 ```
 

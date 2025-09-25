@@ -7,13 +7,13 @@ import {Vm} from "forge-std/Vm.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {SymbioticCoreInit} from "@symbioticfi/core-contracts/script/integration/SymbioticCoreInit.sol";
 import {IVault} from "@symbioticfi/core-contracts/src/interfaces/vault/IVault.sol";
 import {INetworkMiddlewareService} from
     "@symbioticfi/core-contracts/src/interfaces/service/INetworkMiddlewareService.sol";
 
-import {INetwork} from "@symbioticfi/relay-contracts/interfaces/modules/network/INetwork.sol";
 import {INetworkManager} from "@symbioticfi/relay-contracts/interfaces/modules/base/INetworkManager.sol";
 import {IKeyRegistry} from "@symbioticfi/relay-contracts/interfaces/modules/key-registry/IKeyRegistry.sol";
 import {IEpochManager} from "@symbioticfi/relay-contracts/interfaces/modules/valset-driver/IEpochManager.sol";
@@ -37,11 +37,13 @@ import {
     KEY_TYPE_ECDSA_SECP256K1
 } from "@symbioticfi/relay-contracts/interfaces/modules/key-registry/IKeyRegistry.sol";
 
+import {Network} from "@symbioticfi/network/src/Network.sol";
+import {INetwork} from "@symbioticfi/network/src/interfaces/INetwork.sol";
+
 import {ICreateX} from "./interfaces/ICreateX.sol";
 import {BN254G2} from "./utils/BN254G2.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 
-import {Network} from "@symbioticfi/relay-contracts/modules/network/Network.sol";
 import {KeyRegistry} from "../src/symbiotic/KeyRegistry.sol";
 import {Driver} from "../src/symbiotic/Driver.sol";
 import {VotingPowers} from "../src/symbiotic/VotingPowers.sol";
@@ -133,6 +135,7 @@ contract LocalDeploy is SymbioticCoreInit {
         setupKeyRegistry();
         setupVotingPowers();
         setupSettlement();
+
         logAndDumpRelayContracts();
 
         setupSumTask();
@@ -174,28 +177,34 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupNetwork() public returns (address) {
         vm.startBroadcast(deployer);
-        bytes memory networkInitCode = abi.encodePacked(
-            type(Network).creationCode,
-            abi.encode(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService))
+
+        address implementation = address(
+            new Network(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService))
         );
 
-        network = Network(payable(ICreateX(CREATEX_FACTORY).deployCreate3(NETWORK_SALT, networkInitCode)));
         address[] memory proposersAndExecutors = new address[](1);
         proposersAndExecutors[0] = deployer;
+        INetwork.NetworkInitParams memory initParams = INetwork.NetworkInitParams({
+            globalMinDelay: 0,
+            delayParams: new INetwork.DelayParams[](0),
+            proposers: proposersAndExecutors,
+            executors: proposersAndExecutors,
+            name: "Example Network",
+            metadataURI: "https://example.network",
+            defaultAdminRoleHolder: deployer,
+            nameUpdateRoleHolder: deployer,
+            metadataURIUpdateRoleHolder: deployer
+        });
 
-        network.initialize(
-            INetwork.NetworkInitParams({
-                globalMinDelay: 0,
-                delayParams: new INetwork.DelayParams[](0),
-                proposers: proposersAndExecutors,
-                executors: proposersAndExecutors,
-                name: "Example Network",
-                metadataURI: "https://example.network",
-                defaultAdminRoleHolder: deployer,
-                nameUpdateRoleHolder: deployer,
-                metadataURIUpdateRoleHolder: deployer
-            })
+        // Create initialization code for TransparentUpgradeableProxy
+        bytes memory proxyInitCode = abi.encodePacked(
+            type(TransparentUpgradeableProxy).creationCode,
+            abi.encode(implementation, deployer, abi.encodeCall(INetwork.initialize, (initParams)))
         );
+
+        // Deploy proxy using CREATE3
+        network = Network(payable(ICreateX(CREATEX_FACTORY).deployCreate3(NETWORK_SALT, proxyInitCode)));
+
         vm.stopBroadcast();
 
         return address(network);
@@ -203,13 +212,27 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupKeyRegistry() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        KeyRegistry keyRegistry_ =
-            KeyRegistry(ICreateX(CREATEX_FACTORY).deployCreate3(KEY_REGISTRY_SALT, type(KeyRegistry).creationCode));
-        keyRegistry_.initialize(
-            IKeyRegistry.KeyRegistryInitParams({
-                ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "KeyRegistry", version: "1"})
-            })
+
+        // Deploy implementation
+        address implementation = address(new KeyRegistry());
+
+        // Create initialization data
+        bytes memory data = abi.encodeCall(
+            KeyRegistry.initialize,
+            (
+                IKeyRegistry.KeyRegistryInitParams({
+                    ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "KeyRegistry", version: "1"})
+                })
+            )
         );
+
+        // Create proxy initialization code
+        bytes memory proxyInitCode =
+            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, data));
+
+        // Deploy proxy using CREATE3
+        KeyRegistry keyRegistry_ = KeyRegistry(ICreateX(CREATEX_FACTORY).deployCreate3(KEY_REGISTRY_SALT, proxyInitCode));
+
         keyRegistry = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(keyRegistry_)});
         vm.stopBroadcast();
 
@@ -220,41 +243,51 @@ contract LocalDeploy is SymbioticCoreInit {
         IERC20 stakingToken = IERC20(stakingTokens.get(block.chainid));
 
         vm.startBroadcast(deployer);
-        bytes memory votingPowersInitCode = abi.encodePacked(
-            type(VotingPowers).creationCode,
-            abi.encode(
+
+        // Deploy implementation
+        address implementation = address(
+            new VotingPowers(
                 address(symbioticCore.operatorRegistry),
                 address(symbioticCore.vaultFactory),
                 address(symbioticCore.vaultConfigurator)
             )
         );
 
-        VotingPowers votingPowers_ =
-            VotingPowers(ICreateX(CREATEX_FACTORY).deployCreate3(VOTING_POWERS_SALT, votingPowersInitCode));
-        votingPowers_.initialize(
-            IVotingPowerProvider.VotingPowerProviderInitParams({
-                networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                    network: address(network),
-                    subnetworkId: 0
+        // Create initialization data
+        bytes memory data = abi.encodeCall(
+            VotingPowers.initialize,
+            (
+                IVotingPowerProvider.VotingPowerProviderInitParams({
+                    networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
+                        network: address(network),
+                        subnetworkId: 0
+                    }),
+                    ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "VotingPowers", version: "1"}),
+                    requireSlasher: false,
+                    minVaultEpochDuration: SLASHING_WINDOW,
+                    token: address(stakingToken)
                 }),
-                ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "VotingPowers", version: "1"}),
-                requireSlasher: false,
-                minVaultEpochDuration: SLASHING_WINDOW,
-                token: address(stakingToken)
-            }),
-            IOpNetVaultAutoDeploy.OpNetVaultAutoDeployInitParams({
-                isAutoDeployEnabled: true,
-                config: IOpNetVaultAutoDeploy.AutoDeployConfig({
-                    epochDuration: SLASHING_WINDOW,
-                    collateral: address(stakingToken),
-                    burner: address(0),
-                    withSlasher: true,
-                    isBurnerHook: false
+                IOpNetVaultAutoDeploy.OpNetVaultAutoDeployInitParams({
+                    isAutoDeployEnabled: true,
+                    config: IOpNetVaultAutoDeploy.AutoDeployConfig({
+                        epochDuration: SLASHING_WINDOW,
+                        collateral: address(stakingToken),
+                        burner: address(0),
+                        withSlasher: true,
+                        isBurnerHook: false
+                    }),
+                    isSetMaxNetworkLimitHookEnabled: true
                 }),
-                isSetMaxNetworkLimitHookEnabled: true
-            }),
-            IOzOwnable.OzOwnableInitParams({owner: deployer})
+                IOzOwnable.OzOwnableInitParams({owner: deployer})
+            )
         );
+
+        // Create proxy initialization code
+        bytes memory proxyInitCode =
+            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, data));
+
+        // Deploy proxy using CREATE3
+        VotingPowers votingPowers_ = VotingPowers(ICreateX(CREATEX_FACTORY).deployCreate3(VOTING_POWERS_SALT, proxyInitCode));
 
         network.schedule(
             address(symbioticCore.networkMiddlewareService),
@@ -280,9 +313,6 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupSettlement() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        Settlement settlement_ =
-            Settlement(ICreateX(CREATEX_FACTORY).deployCreate3(SETTLEMENT_SALT, type(Settlement).creationCode));
-
         address verifier;
 
         if (VERIFICATION_TYPE == 0) {
@@ -301,17 +331,32 @@ contract LocalDeploy is SymbioticCoreInit {
             revert("Invalid verification type");
         }
 
-        settlement_.initialize(
-            ISettlement.SettlementInitParams({
-                networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                    network: address(network),
-                    subnetworkId: 0
+        // Deploy implementation
+        address implementation = address(new Settlement());
+
+        // Create initialization data
+        bytes memory data = abi.encodeCall(
+            Settlement.initialize,
+            (
+                ISettlement.SettlementInitParams({
+                    networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
+                        network: address(network),
+                        subnetworkId: 0
+                    }),
+                    ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "Settlement", version: "1"}),
+                    sigVerifier: verifier
                 }),
-                ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "Settlement", version: "1"}),
-                sigVerifier: verifier
-            }),
-            deployer
+                deployer
+            )
         );
+
+        // Create proxy initialization code
+        bytes memory proxyInitCode =
+            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, data));
+
+        // Deploy proxy using CREATE3
+        Settlement settlement_ = Settlement(ICreateX(CREATEX_FACTORY).deployCreate3(SETTLEMENT_SALT, proxyInitCode));
+
         settlements.set(block.chainid, address(settlement_));
         vm.stopBroadcast();
 
@@ -320,7 +365,6 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupDriver() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        Driver driver_ = Driver(ICreateX(CREATEX_FACTORY).deployCreate3(DRIVER_SALT, type(Driver).creationCode));
 
         IValSetDriver.CrossChainAddress[] memory votingPowerProviders_ =
             new IValSetDriver.CrossChainAddress[](votingPowerProviders.length());
@@ -347,31 +391,46 @@ contract LocalDeploy is SymbioticCoreInit {
         requiredKeyTags[1] = REQUIRED_KEY_TAG_ECDSA;
         requiredKeyTags[2] = REQUIRED_KEY_TAG_SECONDARY_BLS;
 
-        driver_.initialize(
-            IValSetDriver.ValSetDriverInitParams({
-                networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                    network: address(network),
-                    subnetworkId: 0
+        // Deploy implementation
+        address implementation = address(new Driver());
+
+        // Create initialization data
+        bytes memory data = abi.encodeCall(
+            Driver.initialize,
+            (
+                IValSetDriver.ValSetDriverInitParams({
+                    networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
+                        network: address(network),
+                        subnetworkId: 0
+                    }),
+                    epochManagerInitParams: IEpochManager.EpochManagerInitParams({
+                        epochDuration: EPOCH_DURATION,
+                        epochDurationTimestamp: 0
+                    }),
+                    numAggregators: NUM_AGGREGATORS,
+                    numCommitters: NUM_COMMITTERS,
+                    votingPowerProviders: votingPowerProviders_,
+                    keysProvider: keyRegistry,
+                    settlements: settlementsLocal,
+                    maxVotingPower: MAX_VOTING_POWER,
+                    minInclusionVotingPower: MIN_INCLUSION_VOTING_POWER,
+                    maxValidatorsCount: MAX_VALIDATORS_COUNT,
+                    requiredKeyTags: requiredKeyTags,
+                    quorumThresholds: quorumThresholds,
+                    requiredHeaderKeyTag: REQUIRED_KEY_TAG,
+                    verificationType: VERIFICATION_TYPE
                 }),
-                epochManagerInitParams: IEpochManager.EpochManagerInitParams({
-                    epochDuration: EPOCH_DURATION,
-                    epochDurationTimestamp: 0
-                }),
-                numAggregators: NUM_AGGREGATORS,
-                numCommitters: NUM_COMMITTERS,
-                votingPowerProviders: votingPowerProviders_,
-                keysProvider: keyRegistry,
-                settlements: settlementsLocal,
-                maxVotingPower: MAX_VOTING_POWER,
-                minInclusionVotingPower: MIN_INCLUSION_VOTING_POWER,
-                maxValidatorsCount: MAX_VALIDATORS_COUNT,
-                requiredKeyTags: requiredKeyTags,
-                quorumThresholds: quorumThresholds,
-                requiredHeaderKeyTag: REQUIRED_KEY_TAG,
-                verificationType: VERIFICATION_TYPE
-            }),
-            deployer
+                deployer
+            )
         );
+
+        // Create proxy initialization code
+        bytes memory proxyInitCode =
+            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, data));
+
+        // Deploy proxy using CREATE3
+        Driver driver_ = Driver(ICreateX(CREATEX_FACTORY).deployCreate3(DRIVER_SALT, proxyInitCode));
+
         driver = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(driver_)});
         vm.stopBroadcast();
 
@@ -380,13 +439,20 @@ contract LocalDeploy is SymbioticCoreInit {
 
     function setupSumTask() public returns (IValSetDriver.CrossChainAddress memory) {
         vm.startBroadcast(deployer);
-        bytes memory sumTaskInitCode =
-            abi.encodePacked(type(SumTask).creationCode, abi.encode(address(settlements.get(block.chainid))));
-        address sumTask = ICreateX(CREATEX_FACTORY).deployCreate3(SUM_TASK_SALT, sumTaskInitCode);
-        sumTasks.set(block.chainid, sumTask);
+
+        // Deploy implementation
+        address implementation = address(new SumTask(address(settlements.get(block.chainid))));
+
+        // Create proxy initialization code (no initialization data needed for SumTask)
+        bytes memory proxyInitCode =
+            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, ""));
+
+        // Deploy proxy using CREATE3
+        address sumTaskProxy = ICreateX(CREATEX_FACTORY).deployCreate3(SUM_TASK_SALT, proxyInitCode);
+        sumTasks.set(block.chainid, sumTaskProxy);
         vm.stopBroadcast();
 
-        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: sumTask});
+        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: sumTaskProxy});
     }
 
     function logAndDumpRelayContracts() public {
