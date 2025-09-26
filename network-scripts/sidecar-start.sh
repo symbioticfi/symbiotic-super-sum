@@ -25,4 +25,4 @@ p2p-listen: "/ip4/0.0.0.0/tcp/8880"
 enable-mdns: true
 EOFCONFIG
 
-exec /app/relay_sidecar --config /tmp/sidecar.yaml --secret-keys "$1" --storage-dir "$2" $3
+exec /app/relay_sidecar --config /tmp/sidecar.yaml --secret-keys "$1" --storage-dir "$2"

@@ -31,7 +31,7 @@ contract SumTask {
 
     event RespondTask(bytes32 indexed taskId, Response response);
 
-    uint32 public constant TASK_EXPIRY = 12000;
+    uint32 public constant TASK_EXPIRY = 12_000;
 
     ISettlement public settlement;
 
@@ -41,11 +41,15 @@ contract SumTask {
 
     mapping(bytes32 => Response) public responses;
 
-    constructor(address _settlement) {
+    constructor(
+        address _settlement
+    ) {
         settlement = ISettlement(_settlement);
     }
 
-    function getTaskStatus(bytes32 taskId) public view returns (TaskStatus) {
+    function getTaskStatus(
+        bytes32 taskId
+    ) public view returns (TaskStatus) {
         if (responses[taskId].answeredAt > 0) {
             return TaskStatus.RESPONDED;
         }

@@ -2,7 +2,6 @@ node_modules/@symbioticfi/relay-contracts:@openzeppelin/contracts/=node_modules/
 node_modules/@symbioticfi/relay-contracts:@openzeppelin/contracts-upgradeable/=node_modules/@symbioticfi/relay-contracts/node_modules/@openzeppelin/contracts-upgradeable/
 node_modules/@symbioticfi/relay-contracts:@symbioticfi/rewards/=node_modules/@symbioticfi/rewards/
 node_modules/@symbioticfi/relay-contracts:@symbioticfi/core/=node_modules/@symbioticfi/relay-contracts/node_modules/@symbioticfi/core/
-
 @symbioticfi/relay-contracts/=node_modules/@symbioticfi/relay-contracts/src/
 @symbioticfi/core-contracts/=node_modules/@symbioticfi/core/
 @openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
