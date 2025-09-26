@@ -37,10 +37,11 @@ import {
     KEY_TYPE_ECDSA_SECP256K1
 } from "@symbioticfi/relay-contracts/interfaces/modules/key-registry/IKeyRegistry.sol";
 
+import {RelayDeploy} from "@symbioticfi/relay-contracts-new/script/deploy/RelayDeploy.sol";
+
 import {Network} from "@symbioticfi/network/src/Network.sol";
 import {INetwork} from "@symbioticfi/network/src/interfaces/INetwork.sol";
 
-import {ICreateX} from "./interfaces/ICreateX.sol";
 import {BN254G2} from "./utils/BN254G2.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 
@@ -50,7 +51,7 @@ import {VotingPowers} from "../src/symbiotic/VotingPowers.sol";
 import {Settlement} from "../src/symbiotic/Settlement.sol";
 import {SumTask} from "../src/SumTask.sol";
 
-contract LocalDeploy is SymbioticCoreInit {
+contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
     using KeyTags for uint8;
     using KeyBlsBn254 for BN254.G1Point;
     using KeyEcdsaSecp256k1 for address;
@@ -79,7 +80,6 @@ contract LocalDeploy is SymbioticCoreInit {
     }
 
     bytes32 internal constant KEY_OWNERSHIP_TYPEHASH = keccak256("KeyOwnership(address operator,bytes key)");
-    address public constant CREATEX_FACTORY = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
 
     // Configurable constants
     uint48 internal immutable EPOCH_DURATION = uint48(vm.envOr("EPOCH_TIME", uint256(60)));
@@ -99,10 +99,6 @@ contract LocalDeploy is SymbioticCoreInit {
 
     // CREATE3 salts
     bytes32 public constant NETWORK_SALT = keccak256("Network");
-    bytes32 public constant VOTING_POWERS_SALT = keccak256("VotingPowers");
-    bytes32 public constant KEY_REGISTRY_SALT = keccak256("KeyRegistry");
-    bytes32 public constant SETTLEMENT_SALT = keccak256("Settlement");
-    bytes32 public constant DRIVER_SALT = keccak256("Driver");
     bytes32 public constant SUM_TASK_SALT = keccak256("SumTask");
 
     address internal deployer;
@@ -123,7 +119,7 @@ contract LocalDeploy is SymbioticCoreInit {
         return vm.envOr("DEPLOYER_ADDRESS", 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
     }
 
-    function run() public virtual {
+    function run() public virtual override {
         deployer = getDeployerAddress();
 
         SYMBIOTIC_CORE_PROJECT_ROOT = "node_modules/@symbioticfi/core/";
@@ -178,32 +174,15 @@ contract LocalDeploy is SymbioticCoreInit {
     function setupNetwork() public returns (address) {
         vm.startBroadcast(deployer);
 
-        address implementation = address(
-            new Network(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService))
-        );
+        (address implementation, bytes memory initData) = _networkParams();
+        // TODO: figure out why this does not work
+        network = Network(payable(_deployContract(NETWORK_SALT, implementation, initData)));
 
-        address[] memory proposersAndExecutors = new address[](1);
-        proposersAndExecutors[0] = deployer;
-        INetwork.NetworkInitParams memory initParams = INetwork.NetworkInitParams({
-            globalMinDelay: 0,
-            delayParams: new INetwork.DelayParams[](0),
-            proposers: proposersAndExecutors,
-            executors: proposersAndExecutors,
-            name: "Example Network",
-            metadataURI: "https://example.network",
-            defaultAdminRoleHolder: deployer,
-            nameUpdateRoleHolder: deployer,
-            metadataURIUpdateRoleHolder: deployer
-        });
-
-        // Create initialization code for TransparentUpgradeableProxy
-        bytes memory proxyInitCode = abi.encodePacked(
-            type(TransparentUpgradeableProxy).creationCode,
-            abi.encode(implementation, deployer, abi.encodeCall(INetwork.initialize, (initParams)))
-        );
-
-        // Deploy proxy using CREATE3
-        network = Network(payable(ICreateX(CREATEX_FACTORY).deployCreate3(NETWORK_SALT, proxyInitCode)));
+        // network = new Network(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService));
+        // (bool success, ) = address(network).call(initData);
+        // if (!success) {
+        //     revert("Network initialization failed");
+        // }
 
         vm.stopBroadcast();
 
@@ -211,13 +190,80 @@ contract LocalDeploy is SymbioticCoreInit {
     }
 
     function setupKeyRegistry() public returns (IValSetDriver.CrossChainAddress memory) {
-        vm.startBroadcast(deployer);
+        address keyRegistry_ = deployKeyRegistry();
+        keyRegistry = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: keyRegistry_});
+        return keyRegistry;
+    }
 
+    function setupVotingPowers() public returns (IValSetDriver.CrossChainAddress memory) {
+        address votingPowerProvider = deployVotingPower();
+
+        vm.startBroadcast(deployer);
+        network.schedule(
+            address(symbioticCore.networkMiddlewareService),
+            0,
+            abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
+            bytes32(0),
+            bytes32(0),
+            0
+        );
+
+        network.execute(
+            address(symbioticCore.networkMiddlewareService),
+            0,
+            abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
+            bytes32(0),
+            bytes32(0)
+        );
+        vm.stopBroadcast();
+
+        votingPowerProviders.set(block.chainid, votingPowerProvider);
+        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: votingPowerProvider});
+    }
+
+    function setupSettlement() public returns (IValSetDriver.CrossChainAddress memory) {
+        address settlement = deploySettlement();
+        settlements.set(block.chainid, settlement);
+        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: settlement});
+    }
+
+    function setupDriver() public returns (IValSetDriver.CrossChainAddress memory) {
+        address driver_ = deployDriver();
+        driver = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: driver_});
+        return driver;
+    }
+
+    function _networkParams() internal returns (address implementation, bytes memory initData) {
+        implementation = address(
+            new Network(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService))
+        );
+
+        address[] memory proposersAndExecutors = new address[](1);
+        proposersAndExecutors[0] = deployer;
+        initData = abi.encodeCall(
+            INetwork.initialize,
+            (
+                INetwork.NetworkInitParams({
+                    globalMinDelay: 0,
+                    delayParams: new INetwork.DelayParams[](0),
+                    proposers: proposersAndExecutors,
+                    executors: proposersAndExecutors,
+                    name: "Example Network",
+                    metadataURI: "https://example.network",
+                    defaultAdminRoleHolder: deployer,
+                    nameUpdateRoleHolder: deployer,
+                    metadataURIUpdateRoleHolder: deployer
+                })
+            )
+        );
+    }
+
+    function _keyRegistryParams() internal override returns (address implementation, bytes memory initData) {
         // Deploy implementation
-        address implementation = address(new KeyRegistry());
+        implementation = address(new KeyRegistry());
 
         // Create initialization data
-        bytes memory data = abi.encodeCall(
+        initData = abi.encodeCall(
             KeyRegistry.initialize,
             (
                 IKeyRegistry.KeyRegistryInitParams({
@@ -225,27 +271,13 @@ contract LocalDeploy is SymbioticCoreInit {
                 })
             )
         );
-
-        // Create proxy initialization code
-        bytes memory proxyInitCode =
-            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, data));
-
-        // Deploy proxy using CREATE3
-        KeyRegistry keyRegistry_ = KeyRegistry(ICreateX(CREATEX_FACTORY).deployCreate3(KEY_REGISTRY_SALT, proxyInitCode));
-
-        keyRegistry = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(keyRegistry_)});
-        vm.stopBroadcast();
-
-        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(keyRegistry_)});
     }
 
-    function setupVotingPowers() public returns (IValSetDriver.CrossChainAddress memory) {
+    function _votingPowerParams() internal override returns (address implementation, bytes memory initData) {
         IERC20 stakingToken = IERC20(stakingTokens.get(block.chainid));
 
-        vm.startBroadcast(deployer);
-
         // Deploy implementation
-        address implementation = address(
+        implementation = address(
             new VotingPowers(
                 address(symbioticCore.operatorRegistry),
                 address(symbioticCore.vaultFactory),
@@ -254,7 +286,7 @@ contract LocalDeploy is SymbioticCoreInit {
         );
 
         // Create initialization data
-        bytes memory data = abi.encodeCall(
+        initData = abi.encodeCall(
             VotingPowers.initialize,
             (
                 IVotingPowerProvider.VotingPowerProviderInitParams({
@@ -281,38 +313,9 @@ contract LocalDeploy is SymbioticCoreInit {
                 IOzOwnable.OzOwnableInitParams({owner: deployer})
             )
         );
-
-        // Create proxy initialization code
-        bytes memory proxyInitCode =
-            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, data));
-
-        // Deploy proxy using CREATE3
-        VotingPowers votingPowers_ = VotingPowers(ICreateX(CREATEX_FACTORY).deployCreate3(VOTING_POWERS_SALT, proxyInitCode));
-
-        network.schedule(
-            address(symbioticCore.networkMiddlewareService),
-            0,
-            abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, address(votingPowers_)),
-            bytes32(0),
-            bytes32(0),
-            0
-        );
-
-        network.execute(
-            address(symbioticCore.networkMiddlewareService),
-            0,
-            abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, address(votingPowers_)),
-            bytes32(0),
-            bytes32(0)
-        );
-        votingPowerProviders.set(block.chainid, address(votingPowers_));
-        vm.stopBroadcast();
-
-        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(votingPowers_)});
     }
 
-    function setupSettlement() public returns (IValSetDriver.CrossChainAddress memory) {
-        vm.startBroadcast(deployer);
+    function _settlementParams() internal override returns (address implementation, bytes memory initData) {
         address verifier;
 
         if (VERIFICATION_TYPE == 0) {
@@ -332,10 +335,10 @@ contract LocalDeploy is SymbioticCoreInit {
         }
 
         // Deploy implementation
-        address implementation = address(new Settlement());
+        implementation = address(new Settlement());
 
         // Create initialization data
-        bytes memory data = abi.encodeCall(
+        initData = abi.encodeCall(
             Settlement.initialize,
             (
                 ISettlement.SettlementInitParams({
@@ -349,23 +352,9 @@ contract LocalDeploy is SymbioticCoreInit {
                 deployer
             )
         );
-
-        // Create proxy initialization code
-        bytes memory proxyInitCode =
-            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, data));
-
-        // Deploy proxy using CREATE3
-        Settlement settlement_ = Settlement(ICreateX(CREATEX_FACTORY).deployCreate3(SETTLEMENT_SALT, proxyInitCode));
-
-        settlements.set(block.chainid, address(settlement_));
-        vm.stopBroadcast();
-
-        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(settlement_)});
     }
 
-    function setupDriver() public returns (IValSetDriver.CrossChainAddress memory) {
-        vm.startBroadcast(deployer);
-
+    function _driverParams() internal override returns (address implementation, bytes memory initData) {
         IValSetDriver.CrossChainAddress[] memory votingPowerProviders_ =
             new IValSetDriver.CrossChainAddress[](votingPowerProviders.length());
         for (uint256 i; i < votingPowerProviders.length(); ++i) {
@@ -392,10 +381,10 @@ contract LocalDeploy is SymbioticCoreInit {
         requiredKeyTags[2] = REQUIRED_KEY_TAG_SECONDARY_BLS;
 
         // Deploy implementation
-        address implementation = address(new Driver());
+        implementation = address(new Driver());
 
         // Create initialization data
-        bytes memory data = abi.encodeCall(
+        initData = abi.encodeCall(
             Driver.initialize,
             (
                 IValSetDriver.ValSetDriverInitParams({
@@ -423,18 +412,6 @@ contract LocalDeploy is SymbioticCoreInit {
                 deployer
             )
         );
-
-        // Create proxy initialization code
-        bytes memory proxyInitCode =
-            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, data));
-
-        // Deploy proxy using CREATE3
-        Driver driver_ = Driver(ICreateX(CREATEX_FACTORY).deployCreate3(DRIVER_SALT, proxyInitCode));
-
-        driver = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(driver_)});
-        vm.stopBroadcast();
-
-        return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: address(driver_)});
     }
 
     function setupSumTask() public returns (IValSetDriver.CrossChainAddress memory) {
@@ -443,12 +420,7 @@ contract LocalDeploy is SymbioticCoreInit {
         // Deploy implementation
         address implementation = address(new SumTask(address(settlements.get(block.chainid))));
 
-        // Create proxy initialization code (no initialization data needed for SumTask)
-        bytes memory proxyInitCode =
-            abi.encodePacked(type(TransparentUpgradeableProxy).creationCode, abi.encode(implementation, deployer, ""));
-
-        // Deploy proxy using CREATE3
-        address sumTaskProxy = ICreateX(CREATEX_FACTORY).deployCreate3(SUM_TASK_SALT, proxyInitCode);
+        address sumTaskProxy = _deployContract(SUM_TASK_SALT, implementation, "");
         sumTasks.set(block.chainid, sumTaskProxy);
         vm.stopBroadcast();
 

@@ -13,7 +13,7 @@ import {IVault} from "@symbioticfi/core-contracts/src/interfaces/vault/IVault.so
 import {INetworkMiddlewareService} from
     "@symbioticfi/core-contracts/src/interfaces/service/INetworkMiddlewareService.sol";
 
-import {INetwork} from "@symbioticfi/relay-contracts/interfaces/modules/network/INetwork.sol";
+import {INetwork} from "@symbioticfi/network/src/interfaces/INetwork.sol";
 import {INetworkManager} from "@symbioticfi/relay-contracts/interfaces/modules/base/INetworkManager.sol";
 import {IKeyRegistry} from "@symbioticfi/relay-contracts/interfaces/modules/key-registry/IKeyRegistry.sol";
 import {IEpochManager} from "@symbioticfi/relay-contracts/interfaces/modules/valset-driver/IEpochManager.sol";
@@ -38,7 +38,7 @@ import {BN254G2} from "./utils/BN254G2.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 import {LocalDeploy} from "./LocalDeploy.s.sol";
 
-import {Network} from "@symbioticfi/relay-contracts/modules/network/Network.sol";
+import {Network} from "@symbioticfi/network/src/Network.sol";
 import {KeyRegistry} from "../src/symbiotic/KeyRegistry.sol";
 import {Driver} from "../src/symbiotic/Driver.sol";
 import {VotingPowers} from "../src/symbiotic/VotingPowers.sol";
