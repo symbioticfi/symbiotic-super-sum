@@ -21,3 +21,6 @@ docs/
 
 # Network generated files
 temp-network/
+
+# macOS
+.DS_Store

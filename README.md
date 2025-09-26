@@ -180,9 +180,14 @@ docker stats symbiotic-anvil symbiotic-relay-1 symbiotic-sum-node-1
 
 ## Local Deployments
 
+http://anvil:8545:
 - `SumTask`: 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123
 - `Network`: 0xF15f90Fd25d565dD9dEF6eca6997366D198da0Fd
 - `VotingPowerProvider`: 0xA537F4e6C541a3CF0e0FEA9C05599e559f3cca67
 - `KeyRegistry`: 0xf417E48Fc77dd289CDFbC8df23df0f664C4850bd
 - `ValSetDriver`: 0x99452A3583B47cD706622d64cD57c353Ac55ae77
+- `Settlements`: 0xEfA6DDa36a3A85d9Da7220B964FE4F2d959aD582
+
+http://anvil-settlement:8546:
+- `SumTask`: 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123
 - `Settlements`: 0xEfA6DDa36a3A85d9Da7220B964FE4F2d959aD582
