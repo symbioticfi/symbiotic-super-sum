@@ -31,16 +31,19 @@ npm install
 ### Quick Start
 
 1. **Generate the network configuration:**
+
 ```bash
 ./generate_network.sh
 ```
 
 2. **Start the network:**
+
 ```bash
 docker compose --project-directory temp-network up -d
 ```
 
 3. **Check status:**
+
 ```bash
 docker compose --project-directory temp-network ps
 ```
@@ -97,7 +100,7 @@ docker compose --project-directory temp-network logs -f sum-node-1
 ### Stop the network
 
 ```bash
-docker compose --project-directory temp-network dow
+docker compose --project-directory temp-network down
 ```
 
 ### Clean up data
@@ -134,7 +137,7 @@ cast call 0x0165878A594ca255338adfa4d48449f69242Eb8F "responses(bytes32)" 0x556b
 1. **Services not starting**: Check logs with `docker compose --project-directory temp-network logs [service-name]`
 2. **Port conflicts**: Ensure ports 8545-8546 8081-8099, 9091-9099 are available
 3. **Build issues**: Rebuild with `docker compose --project-directory temp-network build`
-4. **Reset everything**: `docker compose --project-directory temp-network down -v && rm -rf temp-network/data-* && docker compose --project-directory temp-network up -d`
+4. **Reset everything**: `docker compose --project-directory temp-network down -v && rm -rf temp-network && ./generate_network.sh && docker compose --project-directory temp-network up -d`
 
 ### Service Endpoints
 
