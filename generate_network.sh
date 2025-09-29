@@ -167,6 +167,7 @@ services:
       - ../:/app
       - ./cache:/app/cache
       - ./broadcast:/app/broadcast
+      - ./out:/app/out
       - ./deploy-data:/deploy-data
     working_dir: /app
     command: ./network-scripts/deploy.sh
