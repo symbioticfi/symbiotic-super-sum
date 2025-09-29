@@ -21,9 +21,6 @@ DEFAULT_COMMITERS=1
 DEFAULT_AGGREGATORS=1
 MAX_OPERATORS=999
 
-HOST_UID=$(id -u)
-HOST_GID=$(id -g)
-
 
 print_status() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -103,12 +100,14 @@ generate_docker_compose() {
     fi
     
     mkdir -p "$network_dir/deploy-data"
-    
+    chmod 777 "$network_dir/deploy-data"
+
     # Create cache and broadcast directories with proper permissions
-    print_status "Creating cache and broadcast directories..."
-    mkdir -p "$network_dir/cache" "$network_dir/broadcast"
-    chmod 777 "$network_dir/cache" "$network_dir/broadcast"
-    
+    print_status "Creating out, cache and broadcast directories..."
+    mkdir -p "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
+    chmod 777 "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
+
+
     for i in $(seq 1 $operators); do
         local storage_dir="$network_dir/data-$(printf "%02d" $i)"
         mkdir -p "$storage_dir"
@@ -163,7 +162,7 @@ services:
   deployer:
     image: ghcr.io/foundry-rs/foundry:v1.3.5
     container_name: symbiotic-deployer
-    user: "$HOST_UID:$HOST_GID"
+    user: "1000:1000"
     volumes:
       - ../:/app
       - ./cache:/app/cache
