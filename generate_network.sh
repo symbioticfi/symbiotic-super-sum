@@ -21,6 +21,9 @@ DEFAULT_COMMITERS=1
 DEFAULT_AGGREGATORS=1
 MAX_OPERATORS=999
 
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
+
 
 print_status() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -160,6 +163,7 @@ services:
   deployer:
     image: ghcr.io/foundry-rs/foundry:v1.3.5
     container_name: symbiotic-deployer
+    user: "$HOST_UID:$HOST_GID"
     volumes:
       - ../:/app
       - ./cache:/app/cache
