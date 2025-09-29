@@ -100,12 +100,14 @@ generate_docker_compose() {
     fi
     
     mkdir -p "$network_dir/deploy-data"
-    
+    chmod 777 "$network_dir/deploy-data"
+
     # Create cache and broadcast directories with proper permissions
-    print_status "Creating cache and broadcast directories..."
-    mkdir -p "$network_dir/cache" "$network_dir/broadcast"
-    chmod 777 "$network_dir/cache" "$network_dir/broadcast"
-    
+    print_status "Creating out, cache and broadcast directories..."
+    mkdir -p "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
+    chmod 777 "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
+
+
     for i in $(seq 1 $operators); do
         local storage_dir="$network_dir/data-$(printf "%02d" $i)"
         mkdir -p "$storage_dir"
@@ -165,6 +167,7 @@ services:
       - ../:/app
       - ./cache:/app/cache
       - ./broadcast:/app/broadcast
+      - ./out:/app/out
       - ./deploy-data:/deploy-data
     working_dir: /app
     command: ./network-scripts/deploy.sh
