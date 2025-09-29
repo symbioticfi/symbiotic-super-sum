@@ -124,6 +124,7 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
 
         SYMBIOTIC_CORE_PROJECT_ROOT = "node_modules/@symbioticfi/core/";
 
+        uint256 fork1Id = vm.createSelectFork("anvil");
         setupCore();
 
         setupStakingToken();
@@ -131,6 +132,12 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         setupKeyRegistry();
         setupVotingPowers();
         setupSettlement();
+
+        uint256 fork2Id = vm.createSelectFork("anvil-settlement");
+        setupSettlement();
+
+        vm.selectFork(fork1Id);
+        setupDriver();
 
         logAndDumpRelayContracts();
 
@@ -175,14 +182,7 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         vm.startBroadcast(deployer);
 
         (address implementation, bytes memory initData) = _networkParams();
-        // TODO: figure out why this does not work
         network = Network(payable(_deployContract(NETWORK_SALT, implementation, initData)));
-
-        // network = new Network(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService));
-        // (bool success, ) = address(network).call(initData);
-        // if (!success) {
-        //     revert("Network initialization failed");
-        // }
 
         vm.stopBroadcast();
 
