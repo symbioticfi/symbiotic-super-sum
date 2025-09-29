@@ -104,7 +104,7 @@ generate_docker_compose() {
     # Create cache and broadcast directories with proper permissions
     print_status "Creating cache and broadcast directories..."
     mkdir -p "$network_dir/cache" "$network_dir/broadcast"
-    chmod 755 "$network_dir/cache" "$network_dir/broadcast"
+    chmod 777 "$network_dir/cache" "$network_dir/broadcast"
     
     for i in $(seq 1 $operators); do
         local storage_dir="$network_dir/data-$(printf "%02d" $i)"
