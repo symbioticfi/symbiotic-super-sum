@@ -160,7 +160,6 @@ services:
   deployer:
     image: ghcr.io/foundry-rs/foundry:v1.3.5
     container_name: symbiotic-deployer
-    user: "1000:1000"
     volumes:
       - ../:/app
       - ./cache:/app/cache
