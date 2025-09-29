@@ -213,7 +213,7 @@ func fetchResults(ctx context.Context) error {
 			}
 			state.Statuses[chainID] = status
 		}
-		slog.InfoContext(ctx, "Task statuses", "taskID", taskID, "statuses", state.Statuses)
+		slog.InfoContext(ctx, "Task statuses", "taskID", taskID.Hex(), "statuses", state.Statuses)
 		allNotFoundOrExpired := true
 		allResponded := true
 		for _, status := range state.Statuses {
@@ -237,7 +237,7 @@ func fetchResults(ctx context.Context) error {
 				continue
 			}
 			state.AggProof = resp.AggregationProof.Proof
-			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID, "proof", hexutil.Encode(resp.AggregationProof.Proof))
+			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID.Hex(), "proof", hexutil.Encode(resp.AggregationProof.Proof))
 		}
 
 		tasks[taskID] = state
@@ -271,7 +271,7 @@ func processProof(ctx context.Context, taskID common.Hash) error {
 			return errors.Errorf("failed to respond task: %w", err)
 		}
 
-		slog.InfoContext(ctx, "Submitted response tx", "taskID", taskID, "tx", tx.Hash().String(), "gas", tx.Gas())
+		slog.InfoContext(ctx, "Submitted response tx", "taskID", taskID.Hex(), "tx", tx.Hash().String(), "gas", tx.Gas())
 	}
 	return nil
 }
@@ -291,7 +291,7 @@ func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTask
 			continue
 		}
 
-		slog.InfoContext(ctx, "Received new task", "taskID", evt.TaskId, "task", evt.Task)
+		slog.InfoContext(ctx, "Received new task", "taskID", common.Hash(evt.TaskId).Hex(), "task", evt.Task)
 
 		bytes32T, _ := abi.NewType("bytes32", "", nil)
 		uint256T, _ := abi.NewType("uint256", "", nil)
@@ -312,15 +312,22 @@ func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTask
 
 		slog.InfoContext(ctx, "New task result to sign", "message", hexutil.Encode(msg))
 
-		suggestedEpoch, err := relayClient.GetSuggestedEpoch(ctx, &v1.GetSuggestedEpochRequest{})
+		suggestedEpoch := uint64(0)
+		epochInfos, err := relayClient.GetLastAllCommitted(ctx, &v1.GetLastAllCommittedRequest{})
 		if err != nil {
 			return err
+		} else {
+			for _, info := range epochInfos.EpochInfos {
+				if suggestedEpoch == 0 || info.GetLastCommittedEpoch() < suggestedEpoch {
+					suggestedEpoch = info.GetLastCommittedEpoch()
+				}
+			}
 		}
 
 		resp, err := relayClient.SignMessage(ctx, &v1.SignMessageRequest{
 			KeyTag:        15,
 			Message:       msg,
-			RequiredEpoch: &suggestedEpoch.Epoch,
+			RequiredEpoch: &suggestedEpoch,
 		})
 		if err != nil {
 			return err

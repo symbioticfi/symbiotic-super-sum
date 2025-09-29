@@ -23,12 +23,12 @@ import {IVotingPowerProvider} from
 import {IOpNetVaultAutoDeploy} from
     "@symbioticfi/relay-contracts/interfaces/modules/voting-power/extensions/IOpNetVaultAutoDeploy.sol";
 import {SigVerifierBlsBn254Simple} from
-    "@symbioticfi/relay-contracts/contracts/modules/settlement/sig-verifiers/SigVerifierBlsBn254Simple.sol";
+    "@symbioticfi/relay-contracts/modules/settlement/sig-verifiers/SigVerifierBlsBn254Simple.sol";
 import {ISettlement} from "@symbioticfi/relay-contracts/interfaces/modules/settlement/ISettlement.sol";
 import {IOzOwnable} from "@symbioticfi/relay-contracts/interfaces/modules/common/permissions/IOzOwnable.sol";
 import {IOzEIP712} from "@symbioticfi/relay-contracts/interfaces/modules/base/IOzEIP712.sol";
-import {KeyTags} from "@symbioticfi/relay-contracts/contracts/libraries/utils/KeyTags.sol";
-import {KeyBlsBn254, BN254} from "@symbioticfi/relay-contracts/contracts/libraries/keys/KeyBlsBn254.sol";
+import {KeyTags} from "@symbioticfi/relay-contracts/libraries/utils/KeyTags.sol";
+import {KeyBlsBn254, BN254} from "@symbioticfi/relay-contracts/libraries/keys/KeyBlsBn254.sol";
 import {
     KEY_TYPE_BLS_BN254,
     KEY_TYPE_ECDSA_SECP256K1
@@ -38,7 +38,7 @@ import {BN254G2} from "./utils/BN254G2.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 import {LocalDeploy} from "./LocalDeploy.s.sol";
 
-import {Network} from "../src/symbiotic/Network.sol";
+import {Network} from "@symbioticfi/relay-contracts/modules/network/Network.sol";
 import {KeyRegistry} from "../src/symbiotic/KeyRegistry.sol";
 import {Driver} from "../src/symbiotic/Driver.sol";
 import {VotingPowers} from "../src/symbiotic/VotingPowers.sol";

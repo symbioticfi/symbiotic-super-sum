@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {OzAccessControl} from "@symbioticfi/relay-contracts/contracts/modules/common/permissions/OzAccessControl.sol";
-import {ValSetDriver} from "@symbioticfi/relay-contracts/contracts/modules/valset-driver/ValSetDriver.sol";
+import {OzAccessControl} from "@symbioticfi/relay-contracts/modules/common/permissions/OzAccessControl.sol";
+import {ValSetDriver} from "@symbioticfi/relay-contracts/modules/valset-driver/ValSetDriver.sol";
 
 contract Driver is ValSetDriver, OzAccessControl {
-    function initialize(ValSetDriverInitParams memory valSetDriverInitParams, address defaultAdmin)
-        public
-        virtual
-        initializer
-    {
+    function initialize(
+        ValSetDriverInitParams memory valSetDriverInitParams,
+        address defaultAdmin
+    ) public virtual initializer {
         __ValSetDriver_init(valSetDriverInitParams);
         __OzAccessControl_init();
 

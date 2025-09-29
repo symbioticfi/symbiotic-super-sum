@@ -7,7 +7,7 @@
 set -e
 
 # Define the image tag for the relay service, that the current sum node is compatible with
-RELAY_IMAGE_TAG="0.2.1-20250802065445-3f8139849d3f"
+RELAY_IMAGE_TAG="0.2.1-20250925064417-64a0b7ce372a"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -100,7 +100,14 @@ generate_docker_compose() {
     fi
     
     mkdir -p "$network_dir/deploy-data"
-    
+    chmod 777 "$network_dir/deploy-data"
+
+    # Create cache and broadcast directories with proper permissions
+    print_status "Creating out, cache and broadcast directories..."
+    mkdir -p "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
+    chmod 777 "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
+
+
     for i in $(seq 1 $operators); do
         local storage_dir="$network_dir/data-$(printf "%02d" $i)"
         mkdir -p "$storage_dir"
@@ -117,7 +124,7 @@ generate_docker_compose() {
 services:
   # Main Anvil local Ethereum network (Chain ID: 31337)
   anvil:
-    image: ghcr.io/foundry-rs/foundry:v1.2.3
+    image: ghcr.io/foundry-rs/foundry:v1.3.5
     container_name: symbiotic-anvil
     entrypoint: ["anvil"]
     command: "--port 8545 --chain-id 31337 --timestamp 1754051800 --auto-impersonate --slots-in-an-epoch 1 --accounts 10 --balance 10000 --gas-limit 30000000"
@@ -153,12 +160,14 @@ services:
 
   # Contract deployment service for main chain
   deployer:
-    image: ghcr.io/foundry-rs/foundry:v1.3.0
+    image: ghcr.io/foundry-rs/foundry:v1.3.5
     container_name: symbiotic-deployer
+    user: "1000:1000"
     volumes:
       - ../:/app
-      - ../cache:/app/cache
-      - ../broadcast:/app/broadcast
+      - ./cache:/app/cache
+      - ./broadcast:/app/broadcast
+      - ./out:/app/out
       - ./deploy-data:/deploy-data
     working_dir: /app
     command: ./network-scripts/deploy.sh
@@ -171,10 +180,12 @@ services:
       - symbiotic-network
     environment:
       - OPERATOR_COUNT=$operators
+      - NUM_AGGREGATORS=$aggregators
+      - NUM_COMMITTERS=$commiters
 
   # Genesis generation service
   genesis-generator:
-    image: symbioticfi/relay:latest
+    image: symbioticfi/relay:$RELAY_IMAGE_TAG
     container_name: symbiotic-genesis-generator
     volumes:
       - ../:/workspace
@@ -204,26 +215,11 @@ EOF
         local storage_dir="data-$(printf "%02d" $i)"
         local key_index=$((i - 1))
         
-        # Determine role for this operator
-        local role_flags=""
-        local role_name="signer"
-        
-        if [ $committer_count -lt $commiters ]; then
-            role_flags="--committer true"
-            role_name="committer"
-            committer_count=$((committer_count + 1))
-        elif [ $aggregator_count -lt $aggregators ]; then
-            role_flags="--aggregator true"
-            role_name="aggregator"
-            aggregator_count=$((aggregator_count + 1))
-        else
-            role_flags="--signer true"
-            signer_count=$((signer_count + 1))
-        fi
-        
         SYMB_PRIVATE_KEY_DECIMAL=$(($BASE_PRIVATE_KEY + $key_index))
+        SYMB_SECONDARY_PRIVATE_KEY_DECIMAL=$(($BASE_PRIVATE_KEY + $key_index + 10000))
         SYMB_PRIVATE_KEY_HEX=$(printf "%064x" $SYMB_PRIVATE_KEY_DECIMAL)
-        
+        SYMB_SECONDARY_PRIVATE_KEY_HEX=$(printf "%064x" $SYMB_SECONDARY_PRIVATE_KEY_DECIMAL)
+
         # Validate ECDSA secp256k1 private key range (must be between 1 and n-1)
         # Maximum valid key: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
         if [ $SYMB_PRIVATE_KEY_DECIMAL -eq 0 ]; then
@@ -239,9 +235,8 @@ EOF
     container_name: symbiotic-relay-$i
     command:
       - /workspace/network-scripts/sidecar-start.sh 
-      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31338/0x$SYMB_PRIVATE_KEY_HEX,p2p/1/0/$SWARM_KEY,p2p/1/1/$SYMB_PRIVATE_KEY_HEX
+      - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,symb/0/11/0x$SYMB_SECONDARY_PRIVATE_KEY_HEX,symb/1/0/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31338/0x$SYMB_PRIVATE_KEY_HEX,p2p/1/0/$SWARM_KEY,p2p/1/1/$SYMB_PRIVATE_KEY_HEX
       - /app/$storage_dir
-      - $role_flags
     ports:
       - "$port:8080"
     volumes:
@@ -324,13 +319,13 @@ main() {
     echo "  - temp-network/data-* (storage directories)"
     echo
     print_status "To start the network, run:"
-    echo "  cd temp-network && docker compose up -d && cd .."
+    echo "  docker compose --project-directory temp-network up -d"
     echo
     print_status "To check the status, run:"
-    echo "  cd temp-network && docker compose ps && cd .."
+    echo "  docker compose --project-directory temp-network ps"
     echo
     print_status "To view logs, run:"
-    echo "  cd temp-network && docker compose logs -f"
+    echo "  docker compose --project-directory temp-network logs -f"
     echo
     print_warning "Note: The first startup may take several minutes(2-4mins) as it needs to:"
     echo "  1. Download Docker images"

@@ -2,17 +2,18 @@
 pragma solidity ^0.8.25;
 
 import {EqualStakeVPCalc} from
-    "@symbioticfi/relay-contracts/contracts/modules/voting-power/common/voting-power-calc/EqualStakeVPCalc.sol";
+    "@symbioticfi/relay-contracts/modules/voting-power/common/voting-power-calc/EqualStakeVPCalc.sol";
 import {OpNetVaultAutoDeploy} from
-    "@symbioticfi/relay-contracts/contracts/modules/voting-power/extensions/OpNetVaultAutoDeploy.sol";
-import {OzOwnable} from "@symbioticfi/relay-contracts/contracts/modules/common/permissions/OzOwnable.sol";
-import {VotingPowerProvider} from "@symbioticfi/relay-contracts/contracts/modules/voting-power/VotingPowerProvider.sol";
+    "@symbioticfi/relay-contracts/modules/voting-power/extensions/OpNetVaultAutoDeploy.sol";
+import {OzOwnable} from "@symbioticfi/relay-contracts/modules/common/permissions/OzOwnable.sol";
+import {VotingPowerProvider} from "@symbioticfi/relay-contracts/modules/voting-power/VotingPowerProvider.sol";
 
 contract VotingPowers is VotingPowerProvider, OzOwnable, EqualStakeVPCalc, OpNetVaultAutoDeploy {
-    constructor(address operatorRegistry, address vaultFactory, address vaultConfigurator)
-        VotingPowerProvider(operatorRegistry, vaultFactory)
-        OpNetVaultAutoDeploy(vaultConfigurator)
-    {}
+    constructor(
+        address operatorRegistry,
+        address vaultFactory,
+        address vaultConfigurator
+    ) VotingPowerProvider(operatorRegistry, vaultFactory) OpNetVaultAutoDeploy(vaultConfigurator) {}
 
     function initialize(
         VotingPowerProviderInitParams memory votingPowerProviderInitParams,
@@ -25,7 +26,16 @@ contract VotingPowers is VotingPowerProvider, OzOwnable, EqualStakeVPCalc, OpNet
         __EqualStakeVPCalc_init();
     }
 
-    function _registerOperatorImpl(address operator) internal override(OpNetVaultAutoDeploy, VotingPowerProvider) {
+    function _registerOperatorImpl(
+        address operator
+    ) internal override(OpNetVaultAutoDeploy, VotingPowerProvider) {
         super._registerOperatorImpl(operator);
+    }
+
+    function _unregisterOperatorVaultImpl(
+        address operator,
+        address vault
+    ) internal override(OpNetVaultAutoDeploy, VotingPowerProvider) {
+        super._unregisterOperatorVaultImpl(operator, vault);
     }
 }
