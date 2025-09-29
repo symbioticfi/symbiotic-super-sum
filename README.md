@@ -32,20 +32,21 @@ npm install
 
 1. **Generate the network configuration:**
 
-   ```bash
-   ./generate_network.sh
-   ```
+```bash
+./generate_network.sh
+```
 
 2. **Start the network:**
 
-   ```bash
-   cd temp-network && docker compose up -d && cd ..
-   ```
+```bash
+docker compose --project-directory temp-network up -d
+```
 
 3. **Check status:**
-   ```bash
-   cd temp-network && docker compose ps && cd ..
-   ```
+
+```bash
+docker compose --project-directory temp-network ps
+```
 
 ### Services
 
@@ -72,41 +73,41 @@ npm install
 ### Start the network
 
 ```bash
-cd temp-network && docker compose up -d && cd ..
+docker compose --project-directory temp-network up -d
 ```
 
 ### Check status
 
 ```bash
-cd temp-network && docker compose ps && cd ..
+docker compose --project-directory temp-network ps
 ```
 
 ### View logs
 
 ```bash
 # View all logs
-cd temp-network && docker compose logs -f
+docker compose --project-directory temp-network logs -f
 
 # View specific service logs
-cd temp-network && docker compose logs -f anvil
-cd temp-network && docker compose logs -f anvil-settlement
-cd temp-network && docker compose logs -f deployer && cd ..
-cd temp-network && docker compose logs -f genesis-generator && cd ..
-cd temp-network && docker compose logs -f relay-sidecar-1
-cd temp-network && docker compose logs -f sum-node-1
+docker compose --project-directory temp-network logs -f anvil
+docker compose --project-directory temp-network logs -f anvil-settlement
+docker compose --project-directory temp-network logs -f deployer
+docker compose --project-directory temp-network logs -f genesis-generator
+docker compose --project-directory temp-network logs -f relay-sidecar-1
+docker compose --project-directory temp-network logs -f sum-node-1
 ```
 
 ### Stop the network
 
 ```bash
-cd temp-network && docker compose down && cd ..
+docker compose --project-directory temp-network down
 ```
 
 ### Clean up data
 
 ```bash
-cd temp-network && docker compose down
-rm -rf data-* && cd ..
+docker compose --project-directory temp-network down -v
+rm -rf temp-network
 ```
 
 ### Create a task
@@ -135,10 +136,10 @@ cast call 0x0165878A594ca255338adfa4d48449f69242Eb8F "responses(bytes32)" {TASK_
 
 ### Troubleshooting
 
-1. **Services not starting**: Check logs with `cd temp-network && docker compose logs [service-name]`
+1. **Services not starting**: Check logs with `docker compose --project-directory temp-network logs [service-name]`
 2. **Port conflicts**: Ensure ports 8545-8546 8081-8099, 9091-9099 are available
-3. **Build issues**: Rebuild with `cd temp-network && docker compose build && cd ..`
-4. **Reset everything**: `cd temp-network && docker compose down -v && rm -rf data-* && docker compose up -d && cd ..`
+3. **Build issues**: Rebuild with `docker compose --project-directory temp-network build`
+4. **Reset everything**: `docker compose --project-directory temp-network down -v && rm -rf temp-network && ./generate_network.sh && docker compose --project-directory temp-network up -d`
 
 ### Service Endpoints
 
@@ -162,12 +163,12 @@ The network supports:
 
 ```bash
 # Access container shell
-cd temp-network && docker compose exec anvil sh
-cd temp-network && docker compose exec relay-sidecar-1 sh
-cd temp-network && docker compose exec sum-node-1 sh
+docker compose --project-directory temp-network exec anvil sh
+docker compose --project-directory temp-network exec relay-sidecar-1 sh
+docker compose --project-directory temp-network exec sum-node-1 sh
 
 # View real-time logs
-cd temp-network && docker compose logs -f --tail=100
+docker compose --project-directory temp-network logs -f --tail=100
 ```
 
 ### Performance Monitoring
