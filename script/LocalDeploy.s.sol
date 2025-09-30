@@ -522,7 +522,7 @@ contract LocalDeploy is SymbioticCoreInit {
         keyRegistry_.setKey(KEY_TYPE_BLS_BN254.getKeyTag(15), keyBytes, abi.encode(sigG1), abi.encode(g2Key));
 
         // Register BLS-BN254 key with tag 11, not related to header key tag
-        uint256 secondaryBLSKey = operator.privateKey + 10000;
+        uint256 secondaryBLSKey = operator.privateKey + 10_000;
         (g1Key, g2Key) = getBLSKeys(secondaryBLSKey);
         keyBytes = KeyBlsBn254.wrap(g1Key).toBytes();
         messageHash = keyRegistry_.hashTypedDataV4(
