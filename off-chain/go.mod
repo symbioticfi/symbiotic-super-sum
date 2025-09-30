@@ -6,8 +6,9 @@ require (
 	github.com/ethereum/go-ethereum v1.16.3
 	github.com/go-errors/errors v1.5.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
+	github.com/samber/lo v1.51.0
 	github.com/spf13/cobra v1.10.1
-	github.com/symbioticfi/relay v0.2.1-0.20250925064417-64a0b7ce372a
+	github.com/symbioticfi/relay v0.2.1-0.20250929084906-8a36673e5ad5
 	golang.org/x/sync v0.17.0
 	google.golang.org/grpc v1.75.1
 )
