@@ -84,13 +84,13 @@ func run() error {
 var cfg config
 
 type TaskState struct {
-	ChainID        int64
-	Task           contracts.SumTaskTask
-	Result         *big.Int
-	SigEpoch       int64
-	SigRequestHash string
-	AggProof       []byte
-	Statuses       map[int64]uint8
+	ChainID      int64
+	Task         contracts.SumTaskTask
+	Result       *big.Int
+	SigEpoch     int64
+	SigRequestID string
+	AggProof     []byte
+	Statuses     map[int64]uint8
 }
 
 var tasks map[common.Hash]TaskState
@@ -230,7 +230,7 @@ func fetchResults(ctx context.Context) error {
 		}
 		if state.AggProof == nil {
 			resp, err := relayClient.GetAggregationProof(ctx, &v1.GetAggregationProofRequest{
-				RequestHash: state.SigRequestHash,
+				RequestId: state.SigRequestID,
 			})
 			if err != nil {
 				//		slog.InfoContext(ctx, "Failed to fetch aggregation proof", "err", err)
@@ -334,13 +334,13 @@ func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTask
 		}
 
 		tasks[evt.TaskId] = TaskState{
-			ChainID:        chainID,
-			Task:           evt.Task,
-			Result:         taskResult,
-			SigEpoch:       int64(resp.Epoch),
-			SigRequestHash: resp.RequestHash,
-			AggProof:       nil,
-			Statuses:       map[int64]uint8{},
+			ChainID:      chainID,
+			Task:         evt.Task,
+			Result:       taskResult,
+			SigEpoch:     int64(resp.Epoch),
+			SigRequestID: resp.RequestId,
+			AggProof:     nil,
+			Statuses:     map[int64]uint8{},
 		}
 
 		slog.InfoContext(ctx, "New task result signed", "resp", resp)
