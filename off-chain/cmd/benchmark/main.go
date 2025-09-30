@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
+
 	"sum/internal/utils"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -72,21 +74,29 @@ func run(ctx context.Context) error {
 }
 
 func sendRequestAndWait(ctx context.Context, prs processes, nRequests int) *errors.Error {
-	currentEpoch, err := prs[0].relayClient.GetSuggestedEpoch(ctx, &v1.GetSuggestedEpochRequest{})
+	lastAllCommitted, err := prs[0].relayClient.GetLastAllCommitted(ctx, &v1.GetLastAllCommittedRequest{})
 	if err != nil {
 		return errors.Errorf("failed to get current epoch: %w", err)
 	}
 
-	requestHashesSent := make([]string, nRequests)
+	lastCommittedEpoch := lo.Min(
+		lo.Map(
+			lo.Values(lastAllCommitted.EpochInfos),
+			func(item *v1.ChainEpochInfo, _ int) uint64 {
+				return item.LastCommittedEpoch
+			}),
+	)
+
+	requestIDsSent := make([]string, nRequests)
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(20)
 	for i := range nRequests {
 		eg.Go(func() error {
-			requestHash, err := prs.sendMessageToAllRelays(egCtx, currentEpoch.Epoch)
+			requestID, err := prs.sendMessageToAllRelays(egCtx, lastCommittedEpoch)
 			if err != nil {
 				return errors.Errorf("failed to send messages to all processes: %w", err)
 			}
-			requestHashesSent[i] = requestHash
+			requestIDsSent[i] = requestID
 			return nil
 		})
 	}
@@ -100,32 +110,32 @@ func sendRequestAndWait(ctx context.Context, prs processes, nRequests int) *erro
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	requestHashesAggregated := make(map[string]struct{})
+	requestIDsAggregated := make(map[string]struct{})
 
 cycle:
 	for {
 		select {
 		case <-timer.C:
-			for i := range requestHashesSent {
-				requestHash := requestHashesSent[i]
-				if _, ok := requestHashesAggregated[requestHash]; ok {
+			for i := range requestIDsSent {
+				requestID := requestIDsSent[i]
+				if _, ok := requestIDsAggregated[requestID]; ok {
 					continue
 				}
 
 				resp, err := prs[0].relayClient.GetAggregationProof(ctx, &v1.GetAggregationProofRequest{
-					RequestHash: requestHash,
+					RequestId: requestID,
 				})
 				if err != nil {
 					slog.Debug("Failed to get aggregation status", "error", err)
 					continue
 				}
 
-				slog.Debug("Received aggregation proof", "requestHash", requestHash, "proof", common.Bytes2Hex(resp.AggregationProof.MessageHash), "elapsed", time.Since(sentTime))
+				slog.Debug("Received aggregation proof", "requestID", requestID, "proof", common.Bytes2Hex(resp.AggregationProof.MessageHash), "elapsed", time.Since(sentTime))
 
-				requestHashesAggregated[requestHash] = struct{}{}
+				requestIDsAggregated[requestID] = struct{}{}
 			}
-			if len(requestHashesAggregated) == nRequests {
-				slog.Info("All requests aggregated", "count", len(requestHashesAggregated), "elapsed", time.Since(sentTime))
+			if len(requestIDsAggregated) == nRequests {
+				slog.Info("All requests aggregated", "count", len(requestIDsAggregated), "elapsed", time.Since(sentTime))
 				break cycle
 			}
 			timer.Reset(time.Second)
@@ -244,15 +254,15 @@ func (prs processes) stopProcesses() {
 
 func (prs processes) sendMessageToAllRelays(ctx context.Context, epoch uint64) (string, error) {
 	message := randomMessage(sizeOfMessageBytes)
-	var requestHash string
+	var requestID string
 	for _, pr := range prs {
-		rh, err := sendSignMessageRequest(ctx, pr, message, epoch)
+		rID, err := sendSignMessageRequest(ctx, pr, message, epoch)
 		if err != nil {
 			return "", errors.Errorf("failed to send sign message request: %w", err)
 		}
-		requestHash = rh
+		requestID = rID
 	}
-	return requestHash, nil
+	return requestID, nil
 }
 
 func sendSignMessageRequest(ctx context.Context, pr process, message []byte, epoch uint64) (string, error) {
@@ -266,7 +276,7 @@ func sendSignMessageRequest(ctx context.Context, pr process, message []byte, epo
 	}
 	slog.Debug("Sign message request sent", "message", common.Bytes2Hex(message))
 
-	return resp.RequestHash, nil
+	return resp.RequestId, nil
 }
 
 func randomMessage(n int) []byte {
