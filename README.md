@@ -31,16 +31,19 @@ npm install
 ### Quick Start
 
 1. **Generate the network configuration:**
+
 ```bash
 ./generate_network.sh
 ```
 
 2. **Start the network:**
+
 ```bash
 docker compose --project-directory temp-network up -d
 ```
 
 3. **Check status:**
+
 ```bash
 docker compose --project-directory temp-network ps
 ```
@@ -97,7 +100,7 @@ docker compose --project-directory temp-network logs -f sum-node-1
 ### Stop the network
 
 ```bash
-docker compose --project-directory temp-network dow
+docker compose --project-directory temp-network down
 ```
 
 ### Clean up data
@@ -110,25 +113,37 @@ rm -rf temp-network
 ### Create a task
 
 ```bash
-cast send 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF "createTask(uint256,uint256)" 2 2 \
-  --rpc-url http://127.0.0.1:8545 \
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-```
-
-### Check task result
-
-Don't forget to replace `{TASK_ID}`, you can find it in sum node's logs (e.g., `0x556b8b8eec9bc205e200fe8109800d09f66774f659322c71f9df42f668d18416`)
-
-```bash
-cast call 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF "responses(bytes32)" {TASK_ID} \
-  --rpc-url http://127.0.0.1:8545
+taskID=$(cast send --rpc-url http://127.0.0.1:8545 --json \
+ --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+ 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF \
+ "createTask(uint256,uint256)" 33 9 | jq -r '.logs[0].topics[1]')
 ```
 
 or
 
 ```bash
-cast call 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF "responses(bytes32)" {TASK_ID} \
-  --rpc-url http://127.0.0.1:8546
+taskID=$(cast send --rpc-url http://127.0.0.1:8546 --json \
+ --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+ 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF \
+ "createTask(uint256,uint256)" 33 9 | jq -r '.logs[0].topics[1]')
+```
+
+### Check task result
+
+```bash
+result=$(cast call --rpc-url http://127.0.0.1:8545 \
+ 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF \
+ "responses(bytes32)" $taskID)
+cast decode-abi --json "data()(uint48,uint256)" $result
+```
+
+or
+
+```bash
+result=$(cast call --rpc-url http://127.0.0.1:8546 \
+ 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF \
+ "responses(bytes32)" $taskID)
+cast decode-abi --json "data()(uint48,uint256)" $result
 ```
 
 ### Troubleshooting
@@ -136,7 +151,7 @@ cast call 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF "responses(bytes32)" {TASK_
 1. **Services not starting**: Check logs with `docker compose --project-directory temp-network logs [service-name]`
 2. **Port conflicts**: Ensure ports 8545-8546 8081-8099, 9091-9099 are available
 3. **Build issues**: Rebuild with `docker compose --project-directory temp-network build`
-4. **Reset everything**: `docker compose --project-directory temp-network down -v && rm -rf temp-network/data-* && docker compose --project-directory temp-network up -d`
+4. **Reset everything**: `docker compose --project-directory temp-network down -v && rm -rf temp-network && ./generate_network.sh && docker compose --project-directory temp-network up -d`
 
 ### Service Endpoints
 

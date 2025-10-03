@@ -7,7 +7,7 @@
 set -e
 
 # Define the image tag for the relay service, that the current sum node is compatible with
-RELAY_IMAGE_TAG="0.2.1-20250916142614-eb84d4ec6c54"
+RELAY_IMAGE_TAG="0.2.1-20250929084906-8a36673e5ad5"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Default values
-DEFAULT_OPERATORS=2
+DEFAULT_OPERATORS=4
 DEFAULT_COMMITERS=1
 DEFAULT_AGGREGATORS=1
 MAX_OPERATORS=999
@@ -100,12 +100,14 @@ generate_docker_compose() {
     fi
     
     mkdir -p "$network_dir/deploy-data"
-    
+    chmod 777 "$network_dir/deploy-data"
+
     # Create cache and broadcast directories with proper permissions
-    print_status "Creating cache and broadcast directories..."
-    mkdir -p "$network_dir/cache" "$network_dir/broadcast"
-    chmod 755 "$network_dir/cache" "$network_dir/broadcast"
-    
+    print_status "Creating out, cache and broadcast directories..."
+    mkdir -p "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
+    chmod 777 "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
+
+
     for i in $(seq 1 $operators); do
         local storage_dir="$network_dir/data-$(printf "%02d" $i)"
         mkdir -p "$storage_dir"
@@ -165,6 +167,7 @@ services:
       - ../:/app
       - ./cache:/app/cache
       - ./broadcast:/app/broadcast
+      - ./out:/app/out
       - ./deploy-data:/deploy-data
     working_dir: /app
     command: ./network-scripts/deploy.sh

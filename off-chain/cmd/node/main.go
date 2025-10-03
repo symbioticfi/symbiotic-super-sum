@@ -61,7 +61,7 @@ func main() {
 func run() error {
 	rootCmd.PersistentFlags().StringVarP(&cfg.relayApiURL, "relay-api-url", "r", "", "Relay API URL")
 	rootCmd.PersistentFlags().StringSliceVarP(&cfg.evmRpcURLs, "evm-rpc-urls", "e", []string{}, "EVM RPC URLs separated by comma (e.g., 'https://mainnet.infura.io/v3/,...')")
-	rootCmd.PersistentFlags().StringSliceVarP(&cfg.contractAddresses, "contract-addresses", "a", []string{}, "SumTask contracts' addresses corresponding to the RPC URLs separated by comma (e.g., '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf,...')")
+	rootCmd.PersistentFlags().StringSliceVarP(&cfg.contractAddresses, "contract-addresses", "a", []string{}, "SumTask contracts' addresses corresponding to the RPC URLs separated by comma (e.g., '0x4826533B4897376654Bb4d4AD88B7faFD0C98528,...')")
 	rootCmd.PersistentFlags().StringVarP(&cfg.privateKey, "private-key", "p", "", "Task response private key")
 	rootCmd.PersistentFlags().StringVarP(&cfg.logLevel, "log-level", "l", "info", "Log level")
 
@@ -84,13 +84,13 @@ func run() error {
 var cfg config
 
 type TaskState struct {
-	ChainID        int64
-	Task           contracts.SumTaskTask
-	Result         *big.Int
-	SigEpoch       int64
-	SigRequestHash string
-	AggProof       []byte
-	Statuses       map[int64]uint8
+	ChainID      int64
+	Task         contracts.SumTaskTask
+	Result       *big.Int
+	SigEpoch     int64
+	SigRequestID string
+	AggProof     []byte
+	Statuses     map[int64]uint8
 }
 
 var tasks map[common.Hash]TaskState
@@ -213,7 +213,7 @@ func fetchResults(ctx context.Context) error {
 			}
 			state.Statuses[chainID] = status
 		}
-		slog.InfoContext(ctx, "Task statuses", "taskID", taskID, "statuses", state.Statuses)
+		slog.InfoContext(ctx, "Task statuses", "taskID", taskID.Hex(), "statuses", state.Statuses)
 		allNotFoundOrExpired := true
 		allResponded := true
 		for _, status := range state.Statuses {
@@ -230,14 +230,14 @@ func fetchResults(ctx context.Context) error {
 		}
 		if state.AggProof == nil {
 			resp, err := relayClient.GetAggregationProof(ctx, &v1.GetAggregationProofRequest{
-				RequestHash: state.SigRequestHash,
+				RequestId: state.SigRequestID,
 			})
 			if err != nil {
 				//		slog.InfoContext(ctx, "Failed to fetch aggregation proof", "err", err)
 				continue
 			}
 			state.AggProof = resp.AggregationProof.Proof
-			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID, "proof", hexutil.Encode(resp.AggregationProof.Proof))
+			slog.InfoContext(ctx, "Got aggregation proof", "taskID", taskID.Hex(), "proof", hexutil.Encode(resp.AggregationProof.Proof))
 		}
 
 		tasks[taskID] = state
@@ -271,7 +271,7 @@ func processProof(ctx context.Context, taskID common.Hash) error {
 			return errors.Errorf("failed to respond task: %w", err)
 		}
 
-		slog.InfoContext(ctx, "Submitted response tx", "taskID", taskID, "tx", tx.Hash().String(), "gas", tx.Gas())
+		slog.InfoContext(ctx, "Submitted response tx", "taskID", taskID.Hex(), "tx", tx.Hash().String(), "gas", tx.Gas())
 	}
 	return nil
 }
@@ -291,7 +291,7 @@ func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTask
 			continue
 		}
 
-		slog.InfoContext(ctx, "Received new task", "taskID", evt.TaskId, "task", evt.Task)
+		slog.InfoContext(ctx, "Received new task", "taskID", common.Hash(evt.TaskId).Hex(), "task", evt.Task)
 
 		bytes32T, _ := abi.NewType("bytes32", "", nil)
 		uint256T, _ := abi.NewType("uint256", "", nil)
@@ -312,28 +312,35 @@ func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTask
 
 		slog.InfoContext(ctx, "New task result to sign", "message", hexutil.Encode(msg))
 
-		suggestedEpoch, err := relayClient.GetSuggestedEpoch(ctx, &v1.GetSuggestedEpochRequest{})
+		suggestedEpoch := uint64(0)
+		epochInfos, err := relayClient.GetLastAllCommitted(ctx, &v1.GetLastAllCommittedRequest{})
 		if err != nil {
 			return err
+		} else {
+			for _, info := range epochInfos.EpochInfos {
+				if suggestedEpoch == 0 || info.GetLastCommittedEpoch() < suggestedEpoch {
+					suggestedEpoch = info.GetLastCommittedEpoch()
+				}
+			}
 		}
 
 		resp, err := relayClient.SignMessage(ctx, &v1.SignMessageRequest{
 			KeyTag:        15,
 			Message:       msg,
-			RequiredEpoch: &suggestedEpoch.Epoch,
+			RequiredEpoch: &suggestedEpoch,
 		})
 		if err != nil {
 			return err
 		}
 
 		tasks[evt.TaskId] = TaskState{
-			ChainID:        chainID,
-			Task:           evt.Task,
-			Result:         taskResult,
-			SigEpoch:       int64(resp.Epoch),
-			SigRequestHash: resp.RequestHash,
-			AggProof:       nil,
-			Statuses:       map[int64]uint8{},
+			ChainID:      chainID,
+			Task:         evt.Task,
+			Result:       taskResult,
+			SigEpoch:     int64(resp.Epoch),
+			SigRequestID: resp.RequestId,
+			AggProof:     nil,
+			Statuses:     map[int64]uint8{},
 		}
 
 		slog.InfoContext(ctx, "New task result signed", "resp", resp)
