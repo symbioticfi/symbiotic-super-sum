@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {console} from "forge-std/console.sol";
-import {console2} from "forge-std/console2.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -13,6 +11,7 @@ import {SymbioticCoreInit} from "@symbioticfi/core-contracts/script/integration/
 import {IVault} from "@symbioticfi/core-contracts/src/interfaces/vault/IVault.sol";
 import {INetworkMiddlewareService} from
     "@symbioticfi/core-contracts/src/interfaces/service/INetworkMiddlewareService.sol";
+import {Logs} from "@symbioticfi/core/script/utils/Logs.sol";
 
 import {INetworkManager} from "@symbioticfi/relay-contracts/interfaces/modules/base/INetworkManager.sol";
 import {IKeyRegistry} from "@symbioticfi/relay-contracts/interfaces/modules/key-registry/IKeyRegistry.sol";
@@ -98,8 +97,8 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
     uint208 internal immutable NUM_COMMITTERS = uint208(vm.envOr("NUM_COMMITTERS", uint256(1)));
 
     // CREATE3 salts
-    bytes32 public constant NETWORK_SALT = keccak256("Network");
-    bytes32 public constant SUM_TASK_SALT = keccak256("SumTask");
+    bytes11 public constant NETWORK_SALT = bytes11("Network");
+    bytes11 public constant SUM_TASK_SALT = bytes11("SumTask");
 
     address internal deployer;
 
@@ -119,12 +118,11 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         return vm.envOr("DEPLOYER_ADDRESS", 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
     }
 
-    function run() public virtual override {
+    function run() public virtual {
         deployer = getDeployerAddress();
 
         SYMBIOTIC_CORE_PROJECT_ROOT = "node_modules/@symbioticfi/core/";
 
-        uint256 fork1Id = vm.createSelectFork("anvil");
         setupCore();
 
         setupStakingToken();
@@ -132,13 +130,6 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         setupKeyRegistry();
         setupVotingPowers();
         setupSettlement();
-
-        uint256 fork2Id = vm.createSelectFork("anvil-settlement");
-        setupSettlement();
-
-        vm.selectFork(fork1Id);
-        setupDriver();
-
         logAndDumpRelayContracts();
 
         setupSumTask();
@@ -155,18 +146,43 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         _initCore_SymbioticCore(false);
         vm.stopBroadcast();
 
-        console.log("Symbiotic Core contracts:");
-        console.log("   VaultFactory:", address(symbioticCore.vaultFactory));
-        console.log("   DelegatorFactory:", address(symbioticCore.delegatorFactory));
-        console.log("   SlasherFactory:", address(symbioticCore.slasherFactory));
-        console.log("   NetworkRegistry:", address(symbioticCore.networkRegistry));
-        console.log("   NetworkMetadataService:", address(symbioticCore.networkMetadataService));
-        console.log("   NetworkMiddlewareService:", address(symbioticCore.networkMiddlewareService));
-        console.log("   OperatorRegistry:", address(symbioticCore.operatorRegistry));
-        console.log("   OperatorMetadataService:", address(symbioticCore.operatorMetadataService));
-        console.log("   OperatorVaultOptInService:", address(symbioticCore.operatorVaultOptInService));
-        console.log("   OperatorNetworkOptInService:", address(symbioticCore.operatorNetworkOptInService));
-        console.log("   VaultConfigurator:", address(symbioticCore.vaultConfigurator));
+        Logs.log(
+            string.concat(
+                "Symbiotic Core contracts:\n",
+                "   VaultFactory: ",
+                vm.toString(address(symbioticCore.vaultFactory)),
+                "\n",
+                "   DelegatorFactory: ",
+                vm.toString(address(symbioticCore.delegatorFactory)),
+                "\n",
+                "   SlasherFactory: ",
+                vm.toString(address(symbioticCore.slasherFactory)),
+                "\n",
+                "   NetworkRegistry: ",
+                vm.toString(address(symbioticCore.networkRegistry)),
+                "\n",
+                "   NetworkMetadataService: ",
+                vm.toString(address(symbioticCore.networkMetadataService)),
+                "\n",
+                "   NetworkMiddlewareService: ",
+                vm.toString(address(symbioticCore.networkMiddlewareService)),
+                "\n",
+                "   OperatorRegistry: ",
+                vm.toString(address(symbioticCore.operatorRegistry)),
+                "\n",
+                "   OperatorMetadataService: ",
+                vm.toString(address(symbioticCore.operatorMetadataService)),
+                "\n",
+                "   OperatorVaultOptInService: ",
+                vm.toString(address(symbioticCore.operatorVaultOptInService)),
+                "\n",
+                "   OperatorNetworkOptInService: ",
+                vm.toString(address(symbioticCore.operatorNetworkOptInService)),
+                "\n",
+                "   VaultConfigurator: ",
+                vm.toString(address(symbioticCore.vaultConfigurator))
+            )
+        );
     }
 
     function setupStakingToken() public returns (IValSetDriver.CrossChainAddress memory) {
@@ -182,7 +198,7 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         vm.startBroadcast(deployer);
 
         (address implementation, bytes memory initData) = _networkParams();
-        network = Network(payable(_deployContract(NETWORK_SALT, implementation, initData)));
+        network = Network(payable(_deployContract(NETWORK_SALT, implementation, initData, deployer, false)));
 
         vm.stopBroadcast();
 
@@ -190,13 +206,13 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
     }
 
     function setupKeyRegistry() public returns (IValSetDriver.CrossChainAddress memory) {
-        address keyRegistry_ = deployKeyRegistry();
+        address keyRegistry_ = deployKeyRegistry(deployer, false);
         keyRegistry = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: keyRegistry_});
         return keyRegistry;
     }
 
     function setupVotingPowers() public returns (IValSetDriver.CrossChainAddress memory) {
-        address votingPowerProvider = deployVotingPower();
+        address votingPowerProvider = deployVotingPower(deployer, false);
 
         vm.startBroadcast(deployer);
         network.schedule(
@@ -222,13 +238,13 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
     }
 
     function setupSettlement() public returns (IValSetDriver.CrossChainAddress memory) {
-        address settlement = deploySettlement();
+        address settlement = deploySettlement(deployer, false);
         settlements.set(block.chainid, settlement);
         return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: settlement});
     }
 
     function setupDriver() public returns (IValSetDriver.CrossChainAddress memory) {
-        address driver_ = deployDriver();
+        address driver_ = deployDriver(deployer, false);
         driver = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: driver_});
         return driver;
     }
@@ -420,7 +436,7 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         // Deploy implementation
         address implementation = address(new SumTask(address(settlements.get(block.chainid))));
 
-        address sumTaskProxy = _deployContract(SUM_TASK_SALT, implementation, "");
+        address sumTaskProxy = _deployContract(SUM_TASK_SALT, implementation, "", deployer, false);
         sumTasks.set(block.chainid, sumTaskProxy);
         vm.stopBroadcast();
 
@@ -428,22 +444,48 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
     }
 
     function logAndDumpRelayContracts() public {
-        console.log("Symbiotic Relay contracts:");
-        console.log("   Network:", address(network));
-        console.log("   KeyRegistry (chainId:", keyRegistry.chainId, "):", keyRegistry.addr);
-        console.log("   Driver (chainId:", driver.chainId, "):", driver.addr);
+        string memory logMessage = string.concat(
+            "Symbiotic Relay contracts:\n",
+            "   Network: ",
+            vm.toString(address(network)),
+            "\n",
+            "   KeyRegistry (chainId: ",
+            vm.toString(keyRegistry.chainId),
+            "): ",
+            vm.toString(keyRegistry.addr),
+            "\n",
+            "   Driver (chainId: ",
+            vm.toString(driver.chainId),
+            "): ",
+            vm.toString(driver.addr),
+            "\n"
+        );
+
         for (uint256 i; i < stakingTokens.length(); ++i) {
             (uint256 chainId, address stakingToken) = stakingTokens.at(i);
-            console.log("   StakingToken (chainId:", chainId, "):", stakingToken);
+            logMessage = string.concat(
+                logMessage, "   StakingToken (chainId: ", vm.toString(chainId), "): ", vm.toString(stakingToken), "\n"
+            );
         }
         for (uint256 i; i < votingPowerProviders.length(); ++i) {
             (uint256 chainId, address votingPowerProvider) = votingPowerProviders.at(i);
-            console.log("   VotingPowers (chainId:", chainId, "):", votingPowerProvider);
+            logMessage = string.concat(
+                logMessage,
+                "   VotingPowers (chainId: ",
+                vm.toString(chainId),
+                "): ",
+                vm.toString(votingPowerProvider),
+                "\n"
+            );
         }
         for (uint256 i; i < settlements.length(); ++i) {
             (uint256 chainId, address settlement) = settlements.at(i);
-            console.log("   Settlement (chainId:", chainId, "):", settlement);
+            logMessage = string.concat(
+                logMessage, "   Settlement (chainId: ", vm.toString(chainId), "): ", vm.toString(settlement), "\n"
+            );
         }
+
+        Logs.log(logMessage);
 
         string memory obj = "relayContracts";
 
@@ -489,11 +531,14 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
     }
 
     function logAndDumpSumTaskContracts() public {
-        console.log("SumTask contracts:");
+        string memory logMessage = "SumTask contracts:\n";
         for (uint256 i; i < sumTasks.length(); ++i) {
             (uint256 chainId, address sumTask) = sumTasks.at(i);
-            console.log("   SumTask (chainId:", chainId, "):", sumTask);
+            logMessage = string.concat(
+                logMessage, "   SumTask (chainId: ", vm.toString(chainId), "): ", vm.toString(sumTask), "\n"
+            );
         }
+        Logs.log(logMessage);
 
         string memory obj = "sumTaskContracts";
 
@@ -616,11 +661,22 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         vm.stopBroadcast();
 
         operatorsCount++;
-        console.log("Operator added:");
-        console.log("   Address:", operator.addr);
-        console.log("   PrivateKey:", operator.privateKey);
-        console.log("   Vault:", address(vault));
-        console.log("   Stake:", stakeAmount);
+        Logs.log(
+            string.concat(
+                "Operator added:\n",
+                "   Address: ",
+                vm.toString(operator.addr),
+                "\n",
+                "   PrivateKey: ",
+                vm.toString(operator.privateKey),
+                "\n",
+                "   Vault: ",
+                vm.toString(address(vault)),
+                "\n",
+                "   Stake: ",
+                vm.toString(stakeAmount)
+            )
+        );
     }
 
     function getOperator(
@@ -642,23 +698,33 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         return (G1Key, BN254.G2Point([x2, x1], [y2, y1]));
     }
 
-    function printOperatorsInfo() public view {
+    function printOperatorsInfo() public {
         VotingPowers votingPowers = VotingPowers(votingPowerProviders.get(block.chainid));
         address[] memory operators = votingPowers.getOperators();
-        console.log("Operators total:", operators.length);
-        console.log("Operators:");
         VotingPowers.OperatorVotingPower[] memory operatorVPs = votingPowers.getVotingPowers(new bytes[](0));
+
+        string memory logMessage =
+            string.concat("Operators total: ", vm.toString(operators.length), "\n", "Operators:\n");
 
         for (uint256 i; i < operatorVPs.length; ++i) {
             uint256 totalVotingPower;
-            console.log("   Address:", operatorVPs[i].operator);
-            console.log("   Vaults:");
+            logMessage =
+                string.concat(logMessage, "   Address: ", vm.toString(operatorVPs[i].operator), "\n", "   Vaults:\n");
             for (uint256 j; j < operatorVPs[i].vaults.length; ++j) {
-                console.log("       Address:", operatorVPs[i].vaults[j].vault);
-                console.log("       Voting power:", operatorVPs[i].vaults[j].value);
+                logMessage = string.concat(
+                    logMessage,
+                    "       Address: ",
+                    vm.toString(operatorVPs[i].vaults[j].vault),
+                    "\n",
+                    "       Voting power: ",
+                    vm.toString(operatorVPs[i].vaults[j].value),
+                    "\n"
+                );
                 totalVotingPower += operatorVPs[i].vaults[j].value;
             }
-            console.log("   Total voting power:", totalVotingPower);
+            logMessage = string.concat(logMessage, "   Total voting power: ", vm.toString(totalVotingPower), "\n");
         }
+
+        Logs.log(logMessage);
     }
 }

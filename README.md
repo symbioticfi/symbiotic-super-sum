@@ -110,7 +110,7 @@ rm -rf temp-network
 ### Create a task
 
 ```bash
-cast send 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123 "createTask(uint256,uint256)" 2 2 \
+cast send 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF "createTask(uint256,uint256)" 2 2 \
   --rpc-url http://127.0.0.1:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
@@ -120,14 +120,14 @@ cast send 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123 "createTask(uint256,uint256
 Don't forget to replace `{TASK_ID}`, you can find it in sum node's logs (e.g., `0x556b8b8eec9bc205e200fe8109800d09f66774f659322c71f9df42f668d18416`)
 
 ```bash
-cast call 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123 "responses(bytes32)" {TASK_ID} \
+cast call 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF "responses(bytes32)" {TASK_ID} \
   --rpc-url http://127.0.0.1:8545
 ```
 
 or
 
 ```bash
-cast call 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123 "responses(bytes32)" {TASK_ID} \
+cast call 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF "responses(bytes32)" {TASK_ID} \
   --rpc-url http://127.0.0.1:8546
 ```
 
@@ -181,13 +181,13 @@ docker stats symbiotic-anvil symbiotic-relay-1 symbiotic-sum-node-1
 ## Local Deployments
 
 http://anvil:8545:
-- `SumTask`: 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123
-- `Network`: 0xF15f90Fd25d565dD9dEF6eca6997366D198da0Fd
-- `VotingPowerProvider`: 0xA537F4e6C541a3CF0e0FEA9C05599e559f3cca67
-- `KeyRegistry`: 0xf417E48Fc77dd289CDFbC8df23df0f664C4850bd
-- `ValSetDriver`: 0x99452A3583B47cD706622d64cD57c353Ac55ae77
-- `Settlements`: 0xEfA6DDa36a3A85d9Da7220B964FE4F2d959aD582
+- `SumTask`: 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF
+- `Network`: 0xfdc4b2cA12dD7b1463CC01D8022a49BDcf5cFa24
+- `VotingPowerProvider`: 0xF2a217899Ec2C4784167C847a66E7b3dA2A9E70F
+- `KeyRegistry`: 0xe1557A820E1f50dC962c3392b875Fe0449eb184F
+- `ValSetDriver`: 0x120B0062Ea968aF9F29454E679561D5887cbA452
+- `Settlements`: 0x882B9439598239d9626164f7578F812Ef324F5Cb
 
 http://anvil-settlement:8546:
-- `SumTask`: 0x5a96fCeD765c5d7ae00Fc4d0A5Bd7d86992E8123
+- `SumTask`: 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF
 - `Settlements`: 0xEfA6DDa36a3A85d9Da7220B964FE4F2d959aD582
