@@ -160,7 +160,9 @@ services:
 
   # Contract deployment service for main chain
   deployer:
-    image: ghcr.io/foundry-rs/foundry:v1.3.5
+    build:
+      context: ..
+      dockerfile: Dockerfile.deployer
     container_name: symbiotic-deployer
     user: "1000:1000"
     volumes:
@@ -170,7 +172,7 @@ services:
       - ./out:/app/out
       - ./deploy-data:/deploy-data
     working_dir: /app
-    command: ./network-scripts/deploy.sh
+    command: ./network-scripts/deploy-all.sh
     depends_on:
       anvil:
         condition: service_healthy

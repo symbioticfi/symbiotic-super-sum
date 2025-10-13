@@ -36,7 +36,7 @@ import {
     KEY_TYPE_ECDSA_SECP256K1
 } from "@symbioticfi/relay-contracts/interfaces/modules/key-registry/IKeyRegistry.sol";
 
-import {RelayDeploy} from "@symbioticfi/relay-contracts-new/script/deploy/RelayDeploy.sol";
+import {RelayDeploy} from "lib/relay-contracts-new/script/deploy/RelayDeploy.sol";
 
 import {Network} from "@symbioticfi/network/src/Network.sol";
 import {INetwork} from "@symbioticfi/network/src/interfaces/INetwork.sol";
@@ -195,24 +195,24 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
     }
 
     function setupNetwork() public returns (address) {
-        vm.startBroadcast(deployer);
-
         (address implementation, bytes memory initData) = _networkParams();
-        network = Network(payable(_deployContract(NETWORK_SALT, implementation, initData, deployer, false)));
-
+        vm.startBroadcast(deployer);
+        network = Network(payable(_deployContract(NETWORK_SALT, implementation, initData, deployer, false, "Network")));
         vm.stopBroadcast();
 
         return address(network);
     }
 
     function setupKeyRegistry() public returns (IValSetDriver.CrossChainAddress memory) {
-        address keyRegistry_ = deployKeyRegistry(deployer, false);
+        (address implementation, bytes memory initData) = _keyRegistryParams();
+        address keyRegistry_ = deployKeyRegistry(deployer, false, implementation, initData);
         keyRegistry = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: keyRegistry_});
         return keyRegistry;
     }
 
     function setupVotingPowers() public returns (IValSetDriver.CrossChainAddress memory) {
-        address votingPowerProvider = deployVotingPower(deployer, false);
+        (address implementation, bytes memory initData) = _votingPowerProviderParams();
+        address votingPowerProvider = deployVotingPowerProvider(deployer, false, implementation, initData);
 
         vm.startBroadcast(deployer);
         network.schedule(
@@ -238,21 +238,39 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
     }
 
     function setupSettlement() public returns (IValSetDriver.CrossChainAddress memory) {
-        address settlement = deploySettlement(deployer, false);
+        (address implementation, bytes memory initData) = _settlementParams();
+        address settlement = deploySettlement(deployer, false, implementation, initData);
         settlements.set(block.chainid, settlement);
         return IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: settlement});
     }
 
     function setupDriver() public returns (IValSetDriver.CrossChainAddress memory) {
-        address driver_ = deployDriver(deployer, false);
+        IValSetDriver.CrossChainAddress[] memory votingPowerProviders_ =
+            new IValSetDriver.CrossChainAddress[](votingPowerProviders.length());
+        for (uint256 i; i < votingPowerProviders.length(); ++i) {
+            (uint256 chainId, address votingPowerProvider) = votingPowerProviders.at(i);
+            votingPowerProviders_[i] =
+                IValSetDriver.CrossChainAddress({chainId: uint64(chainId), addr: votingPowerProvider});
+        }
+        IValSetDriver.CrossChainAddress[] memory settlementsLocal =
+            new IValSetDriver.CrossChainAddress[](settlements.length());
+        for (uint256 i; i < settlements.length(); ++i) {
+            (uint256 chainId, address settlement) = settlements.at(i);
+            settlementsLocal[i] = IValSetDriver.CrossChainAddress({chainId: uint64(chainId), addr: settlement});
+        }
+
+        (address implementation, bytes memory initData) = _valSetDriverParams(keyRegistry, settlementsLocal, votingPowerProviders_);
+        address driver_ = deployValSetDriver(deployer, false, implementation, initData);
         driver = IValSetDriver.CrossChainAddress({chainId: uint64(block.chainid), addr: driver_});
         return driver;
     }
 
     function _networkParams() internal returns (address implementation, bytes memory initData) {
+        vm.startBroadcast(deployer);
         implementation = address(
             new Network(address(symbioticCore.networkRegistry), address(symbioticCore.networkMiddlewareService))
         );
+        vm.stopBroadcast();
 
         address[] memory proposersAndExecutors = new address[](1);
         proposersAndExecutors[0] = deployer;
@@ -274,9 +292,11 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         );
     }
 
-    function _keyRegistryParams() internal override returns (address implementation, bytes memory initData) {
+    function _keyRegistryParams() internal returns (address implementation, bytes memory initData) {
         // Deploy implementation
+        vm.startBroadcast(deployer);
         implementation = address(new KeyRegistry());
+        vm.stopBroadcast();
 
         // Create initialization data
         initData = abi.encodeCall(
@@ -289,10 +309,11 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         );
     }
 
-    function _votingPowerParams() internal override returns (address implementation, bytes memory initData) {
+    function _votingPowerProviderParams() internal returns (address implementation, bytes memory initData) {
         IERC20 stakingToken = IERC20(stakingTokens.get(block.chainid));
 
         // Deploy implementation
+        vm.startBroadcast(deployer);
         implementation = address(
             new VotingPowers(
                 address(symbioticCore.operatorRegistry),
@@ -300,6 +321,7 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
                 address(symbioticCore.vaultConfigurator)
             )
         );
+        vm.stopBroadcast();
 
         // Create initialization data
         initData = abi.encodeCall(
@@ -331,7 +353,7 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         );
     }
 
-    function _settlementParams() internal override returns (address implementation, bytes memory initData) {
+    function _settlementParams() internal returns (address implementation, bytes memory initData) {
         address verifier;
 
         if (VERIFICATION_TYPE == 0) {
@@ -351,7 +373,9 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         }
 
         // Deploy implementation
+        vm.startBroadcast(deployer);
         implementation = address(new Settlement());
+        vm.stopBroadcast();
 
         // Create initialization data
         initData = abi.encodeCall(
@@ -370,20 +394,11 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         );
     }
 
-    function _driverParams() internal override returns (address implementation, bytes memory initData) {
-        IValSetDriver.CrossChainAddress[] memory votingPowerProviders_ =
-            new IValSetDriver.CrossChainAddress[](votingPowerProviders.length());
-        for (uint256 i; i < votingPowerProviders.length(); ++i) {
-            (uint256 chainId, address votingPowerProvider) = votingPowerProviders.at(i);
-            votingPowerProviders_[i] =
-                IValSetDriver.CrossChainAddress({chainId: uint64(chainId), addr: votingPowerProvider});
-        }
-        IValSetDriver.CrossChainAddress[] memory settlementsLocal =
-            new IValSetDriver.CrossChainAddress[](settlements.length());
-        for (uint256 i; i < settlements.length(); ++i) {
-            (uint256 chainId, address settlement) = settlements.at(i);
-            settlementsLocal[i] = IValSetDriver.CrossChainAddress({chainId: uint64(chainId), addr: settlement});
-        }
+    function _valSetDriverParams(
+        IValSetDriver.CrossChainAddress memory keyRegistry_,
+        IValSetDriver.CrossChainAddress[] memory settlements_,
+        IValSetDriver.CrossChainAddress[] memory votingPowerProviders_
+    ) internal returns (address implementation, bytes memory initData) {
         IValSetDriver.QuorumThreshold[] memory quorumThresholds = new IValSetDriver.QuorumThreshold[](3);
         quorumThresholds[0] =
             IValSetDriver.QuorumThreshold({keyTag: REQUIRED_KEY_TAG, quorumThreshold: QUORUM_THRESHOLD});
@@ -397,7 +412,9 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         requiredKeyTags[2] = REQUIRED_KEY_TAG_SECONDARY_BLS;
 
         // Deploy implementation
+        vm.startBroadcast(deployer);
         implementation = address(new Driver());
+        vm.stopBroadcast();
 
         // Create initialization data
         initData = abi.encodeCall(
@@ -416,7 +433,7 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
                     numCommitters: NUM_COMMITTERS,
                     votingPowerProviders: votingPowerProviders_,
                     keysProvider: keyRegistry,
-                    settlements: settlementsLocal,
+                    settlements: settlements_,
                     maxVotingPower: MAX_VOTING_POWER,
                     minInclusionVotingPower: MIN_INCLUSION_VOTING_POWER,
                     maxValidatorsCount: MAX_VALIDATORS_COUNT,
@@ -436,7 +453,7 @@ contract LocalDeploy is SymbioticCoreInit, RelayDeploy {
         // Deploy implementation
         address implementation = address(new SumTask(address(settlements.get(block.chainid))));
 
-        address sumTaskProxy = _deployContract(SUM_TASK_SALT, implementation, "", deployer, false);
+        address sumTaskProxy = _deployContract(SUM_TASK_SALT, implementation, "", deployer, false, "SumTask");
         sumTasks.set(block.chainid, sumTaskProxy);
         vm.stopBroadcast();
 

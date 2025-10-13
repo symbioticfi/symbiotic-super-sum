@@ -1,0 +1,63 @@
+# Relay Contracts Deployment Configuration
+# This file defines which contracts should be deployed to which chains
+
+# Chain configurations with RPC URLs
+chains:
+  31337: # Anvil (localhost)
+    rpc_url: "http://anvil:8545"
+    name: "ANVIL"
+    needCoreDeploy: true
+  31338: # Anvil (localhost)
+    rpc_url: "http://anvil-settlement:8546"
+    name: "SETTLEMENT"
+    needCoreDeploy: false
+
+# Contract deployment configuration
+# Settlement and VotingPowerProvider can be deployed to multiple chains
+contracts:
+  network:
+    chains: [31337]
+    function_name: "deployNetwork()"
+    description: "Network contract"
+
+  stakingToken:
+    chains: [31337, 31338]
+    function_name: "deployStakingToken()"
+    description: "Staking token contract"
+
+  settlement:
+    chains: [31337, 31338]
+    function_name: "deploySettlement((uint64,address)[])"
+    params: "network[]"
+    description: "Settlement contract for cross-chain validation"
+  
+  keyRegistry:
+    chains: [31337]
+    function_name: "deployKeyRegistry()"
+    description: "Key registry contract for validator keys"
+  
+  votingPowerProvider:
+    chains: [31337]
+    function_name: "deployVotingPowerProvider((uint64,address),(uint64,address))"
+    params: "network,stakingToken"
+    description: "Voting power provider contract (optional)"
+  
+  valSetDriver:
+    chains: [31337]
+    function_name: "deployValSetDriver((uint64,address),(uint64,address),(uint64,address)[],(uint64,address)[])"
+    params: "network,keyRegistry,settlement[],votingPowerProvider[]"
+    description: "Validator set driver contract (deployed last)"
+
+  superSum:
+    chains: [31337]
+    function_name: "deploySumTask((uint64,address))"
+    params: "settlement"
+    description: "SuperSum contract"
+
+  sumTask:
+    chains: [31337]
+    function_name: "addOperators((uint64,address),(uint64,address),(uint64,address),(uint64,address))"
+    params: "network,keyRegistry,stakingToken,votingPowerProvider"
+    description: "Operators registration"
+
+
