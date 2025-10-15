@@ -7,7 +7,7 @@
 set -e
 
 # Define the image tag for the relay service, that the current sum node is compatible with
-RELAY_IMAGE_TAG="0.2.1-20250929084906-8a36673e5ad5"
+RELAY_IMAGE_TAG="0.2.1-20251015081108-56219b54daad"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
