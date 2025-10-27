@@ -293,9 +293,7 @@ contract MyRelayDeploy is RelayDeploy {
         vm.writeJson("", "temp-network/deploy-data/deployment-completed.json");
     }
 
-    function configureOperatorKeys(
-        uint256 index
-    ) public {
+    function configureOperatorKeys(uint256 index) public {
         Vm.Wallet memory operator = getOperator(index);
         (BN254.G1Point memory g1Key, BN254.G2Point memory g2Key) = getBLSKeys(operator.privateKey);
         KeyRegistry keyRegistry = KeyRegistry(getKeyRegistry().addr);
@@ -333,10 +331,7 @@ contract MyRelayDeploy is RelayDeploy {
         vm.stopBroadcast();
     }
 
-    function registerOperator(
-        uint256 index,
-        uint256 stakeAmount
-    ) public {
+    function registerOperator(uint256 index, uint256 stakeAmount) public {
         Vm.Wallet memory operator = getOperator(index);
         IERC20 stakingToken = IERC20(getStakingToken());
         VotingPowers votingPowers = VotingPowers(getVotingPowerProvider());
@@ -358,18 +353,14 @@ contract MyRelayDeploy is RelayDeploy {
         vm.stopBroadcast();
     }
 
-    function getOperator(
-        uint256 index
-    ) public returns (VmSafe.Wallet memory operator) {
+    function getOperator(uint256 index) public returns (VmSafe.Wallet memory operator) {
         // deterministic operator private key
         operator = vm.createWallet(1e18 + index);
         vm.rememberKey(operator.privateKey);
         return operator;
     }
 
-    function getBLSKeys(
-        uint256 privateKey
-    ) public returns (BN254.G1Point memory, BN254.G2Point memory) {
+    function getBLSKeys(uint256 privateKey) public returns (BN254.G1Point memory, BN254.G2Point memory) {
         BN254.G1Point memory G1Key = BN254.generatorG1().scalar_mul(privateKey);
         BN254.G2Point memory G2 = BN254.generatorG2();
         (uint256 x1, uint256 x2, uint256 y1, uint256 y2) =

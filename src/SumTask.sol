@@ -41,15 +41,11 @@ contract SumTask {
 
     mapping(bytes32 => Response) public responses;
 
-    constructor(
-        address _settlement
-    ) {
+    constructor(address _settlement) {
         settlement = ISettlement(_settlement);
     }
 
-    function getTaskStatus(
-        bytes32 taskId
-    ) public view returns (TaskStatus) {
+    function getTaskStatus(bytes32 taskId) public view returns (TaskStatus) {
         if (responses[taskId].answeredAt > 0) {
             return TaskStatus.RESPONDED;
         }
@@ -65,10 +61,7 @@ contract SumTask {
         return TaskStatus.CREATED;
     }
 
-    function createTask(
-        uint256 numberA,
-        uint256 numberB
-    ) public returns (bytes32 taskId) {
+    function createTask(uint256 numberA, uint256 numberB) public returns (bytes32 taskId) {
         uint256 nonce_ = nonce++;
         Task memory task = Task({numberA: numberA, numberB: numberB, nonce: nonce_, createdAt: uint48(block.timestamp)});
         taskId = keccak256(abi.encode(block.chainid, numberA, numberB, nonce_));
@@ -77,12 +70,7 @@ contract SumTask {
         emit CreateTask(taskId, task);
     }
 
-    function respondTask(
-        bytes32 taskId,
-        uint256 result,
-        uint48 epoch,
-        bytes calldata proof
-    ) public {
+    function respondTask(bytes32 taskId, uint256 result, uint48 epoch, bytes calldata proof) public {
         // check if the task is not responded yet
         if (responses[taskId].answeredAt > 0) {
             revert AlreadyResponded();

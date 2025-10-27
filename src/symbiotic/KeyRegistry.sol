@@ -6,9 +6,7 @@ import {
 } from "@symbioticfi/relay-contracts/src/modules/key-registry/KeyRegistry.sol";
 
 contract KeyRegistry is SymbioticKeyRegistry {
-    function initialize(
-        KeyRegistryInitParams memory keyRegistryInitParams
-    ) public virtual initializer {
+    function initialize(KeyRegistryInitParams memory keyRegistryInitParams) public virtual initializer {
         __KeyRegistry_init(keyRegistryInitParams);
     }
 }

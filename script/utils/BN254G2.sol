@@ -70,13 +70,11 @@ library BN254G2 {
      * @param pt1yy Coefficient 2 of y
      * @return (pt2xx, pt2xy, pt2yx, pt2yy)
      */
-    function ECTwistMul(
-        uint256 s,
-        uint256 pt1xx,
-        uint256 pt1xy,
-        uint256 pt1yx,
-        uint256 pt1yy
-    ) internal view returns (uint256, uint256, uint256, uint256) {
+    function ECTwistMul(uint256 s, uint256 pt1xx, uint256 pt1xy, uint256 pt1yx, uint256 pt1yy)
+        internal
+        view
+        returns (uint256, uint256, uint256, uint256)
+    {
         uint256 pt1zx = 1;
         if (pt1xx == 0 && pt1xy == 0 && pt1yx == 0 && pt1yy == 0) {
             pt1xx = 1;
@@ -99,76 +97,40 @@ library BN254G2 {
         return FIELD_MODULUS;
     }
 
-    function submod(
-        uint256 a,
-        uint256 b,
-        uint256 n
-    ) internal pure returns (uint256) {
+    function submod(uint256 a, uint256 b, uint256 n) internal pure returns (uint256) {
         return addmod(a, n - b, n);
     }
 
-    function _FQ2Mul(
-        uint256 xx,
-        uint256 xy,
-        uint256 yx,
-        uint256 yy
-    ) internal pure returns (uint256, uint256) {
+    function _FQ2Mul(uint256 xx, uint256 xy, uint256 yx, uint256 yy) internal pure returns (uint256, uint256) {
         uint256 result1 = submod(mulmod(xx, yx, FIELD_MODULUS), mulmod(xy, yy, FIELD_MODULUS), FIELD_MODULUS);
         uint256 result2 = addmod(mulmod(xx, yy, FIELD_MODULUS), mulmod(xy, yx, FIELD_MODULUS), FIELD_MODULUS);
         return (result1, result2);
     }
 
-    function _FQ2Muc(
-        uint256 xx,
-        uint256 xy,
-        uint256 c
-    ) internal pure returns (uint256, uint256) {
+    function _FQ2Muc(uint256 xx, uint256 xy, uint256 c) internal pure returns (uint256, uint256) {
         return (mulmod(xx, c, FIELD_MODULUS), mulmod(xy, c, FIELD_MODULUS));
     }
 
-    function _FQ2Add(
-        uint256 xx,
-        uint256 xy,
-        uint256 yx,
-        uint256 yy
-    ) internal pure returns (uint256, uint256) {
+    function _FQ2Add(uint256 xx, uint256 xy, uint256 yx, uint256 yy) internal pure returns (uint256, uint256) {
         return (addmod(xx, yx, FIELD_MODULUS), addmod(xy, yy, FIELD_MODULUS));
     }
 
-    function _FQ2Sub(
-        uint256 xx,
-        uint256 xy,
-        uint256 yx,
-        uint256 yy
-    ) internal pure returns (uint256 rx, uint256 ry) {
+    function _FQ2Sub(uint256 xx, uint256 xy, uint256 yx, uint256 yy) internal pure returns (uint256 rx, uint256 ry) {
         return (submod(xx, yx, FIELD_MODULUS), submod(xy, yy, FIELD_MODULUS));
     }
 
-    function _FQ2Div(
-        uint256 xx,
-        uint256 xy,
-        uint256 yx,
-        uint256 yy
-    ) internal view returns (uint256, uint256) {
+    function _FQ2Div(uint256 xx, uint256 xy, uint256 yx, uint256 yy) internal view returns (uint256, uint256) {
         (yx, yy) = _FQ2Inv(yx, yy);
         return _FQ2Mul(xx, xy, yx, yy);
     }
 
-    function _FQ2Inv(
-        uint256 x,
-        uint256 y
-    ) internal view returns (uint256, uint256) {
+    function _FQ2Inv(uint256 x, uint256 y) internal view returns (uint256, uint256) {
         uint256 inv =
             _modInv(addmod(mulmod(y, y, FIELD_MODULUS), mulmod(x, x, FIELD_MODULUS), FIELD_MODULUS), FIELD_MODULUS);
         return (mulmod(x, inv, FIELD_MODULUS), FIELD_MODULUS - mulmod(y, inv, FIELD_MODULUS));
     }
 
-    function _isOnCurve(
-        uint256 xx,
-        uint256 xy,
-        uint256 yx,
-        uint256 yy
-    ) internal pure returns (bool) {
+    function _isOnCurve(uint256 xx, uint256 xy, uint256 yx, uint256 yy) internal pure returns (bool) {
         uint256 yyx;
         uint256 yyy;
         uint256 xxxx;
@@ -181,10 +143,7 @@ library BN254G2 {
         return yyx == 0 && yyy == 0;
     }
 
-    function _modInv(
-        uint256 a,
-        uint256 n
-    ) internal view returns (uint256 result) {
+    function _modInv(uint256 a, uint256 n) internal view returns (uint256 result) {
         bool success;
         assembly ("memory-safe") {
             let freemem := mload(0x40)
@@ -200,14 +159,11 @@ library BN254G2 {
         require(success);
     }
 
-    function _fromJacobian(
-        uint256 pt1xx,
-        uint256 pt1xy,
-        uint256 pt1yx,
-        uint256 pt1yy,
-        uint256 pt1zx,
-        uint256 pt1zy
-    ) internal view returns (uint256 pt2xx, uint256 pt2xy, uint256 pt2yx, uint256 pt2yy) {
+    function _fromJacobian(uint256 pt1xx, uint256 pt1xy, uint256 pt1yx, uint256 pt1yy, uint256 pt1zx, uint256 pt1zy)
+        internal
+        view
+        returns (uint256 pt2xx, uint256 pt2xy, uint256 pt2yx, uint256 pt2yy)
+    {
         uint256 invzx;
         uint256 invzy;
         (invzx, invzy) = _FQ2Inv(pt1zx, pt1zy);
@@ -230,9 +186,7 @@ library BN254G2 {
         uint256 pt2zy;
     }
 
-    function _ECTwistAddJacobian(
-        _ECTwistAddJacobianArgs memory $
-    ) internal pure returns (uint256[6] memory pt3) {
+    function _ECTwistAddJacobian(_ECTwistAddJacobianArgs memory $) internal pure returns (uint256[6] memory pt3) {
         if ($.pt1zx == 0 && $.pt1zy == 0) {
             (pt3[PTXX], pt3[PTXY], pt3[PTYX], pt3[PTYY], pt3[PTZX], pt3[PTZY]) =
                 ($.pt2xx, $.pt2xy, $.pt2yx, $.pt2yy, $.pt2zx, $.pt2zy);

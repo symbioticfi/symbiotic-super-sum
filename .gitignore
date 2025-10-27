@@ -1,26 +1,42 @@
-# Compiler files
-cache/
-out/
-.data/
+# macOS
+.DS_Store
 
-node_modules/
+# Ignore node_modules and dependencies
+node_modules
+*.log
+yarn-error.log
 
-# Ignores development broadcast logs
-!/broadcast
-/broadcast/*/31337/
-/broadcast/*/31338/
-/broadcast/**/dry-run/
+# Ignore build outputs
+dist
+out
+**/__pycache__
 
-# Docs
-docs/
-
-# Dotenv file
+# Ignore environment files
 .env
 
-.idea
+# Ignore version control files
+.git
+.gitignore
+
+# Ignore editor and OS-specific files
+*.swp
+*.DS_Store
+Thumbs.db
+
+# Ignore IDE-specific files
+.idea/
+.vscode/
+
+cache/
+out/
+broadcast/
+deployments/
+
+lcov.info
+/target
+/coverage
+/report
+.password
 
 # Network generated files
 temp-network/
-
-# macOS
-.DS_Store

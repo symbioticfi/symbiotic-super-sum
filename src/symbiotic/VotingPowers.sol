@@ -11,11 +11,10 @@ import {OzOwnable} from "@symbioticfi/relay-contracts/src/modules/common/permiss
 import {VotingPowerProvider} from "@symbioticfi/relay-contracts/src/modules/voting-power/VotingPowerProvider.sol";
 
 contract VotingPowers is VotingPowerProvider, OzOwnable, EqualStakeVPCalc, OpNetVaultAutoDeploy {
-    constructor(
-        address operatorRegistry,
-        address vaultFactory,
-        address vaultConfigurator
-    ) VotingPowerProvider(operatorRegistry, vaultFactory) OpNetVaultAutoDeploy(vaultConfigurator) {}
+    constructor(address operatorRegistry, address vaultFactory, address vaultConfigurator)
+        VotingPowerProvider(operatorRegistry, vaultFactory)
+        OpNetVaultAutoDeploy(vaultConfigurator)
+    {}
 
     function initialize(
         VotingPowerProviderInitParams memory votingPowerProviderInitParams,
@@ -28,16 +27,14 @@ contract VotingPowers is VotingPowerProvider, OzOwnable, EqualStakeVPCalc, OpNet
         __EqualStakeVPCalc_init();
     }
 
-    function _registerOperatorImpl(
-        address operator
-    ) internal override(OpNetVaultAutoDeploy, VotingPowerProvider) {
+    function _registerOperatorImpl(address operator) internal override(OpNetVaultAutoDeploy, VotingPowerProvider) {
         super._registerOperatorImpl(operator);
     }
 
-    function _unregisterOperatorVaultImpl(
-        address operator,
-        address vault
-    ) internal override(OpNetVaultAutoDeploy, VotingPowerProvider) {
+    function _unregisterOperatorVaultImpl(address operator, address vault)
+        internal
+        override(OpNetVaultAutoDeploy, VotingPowerProvider)
+    {
         super._unregisterOperatorVaultImpl(operator, vault);
     }
 }

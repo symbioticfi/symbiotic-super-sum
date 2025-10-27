@@ -5,10 +5,11 @@ import {OzAccessControl} from "@symbioticfi/relay-contracts/src/modules/common/p
 import {ValSetDriver} from "@symbioticfi/relay-contracts/src/modules/valset-driver/ValSetDriver.sol";
 
 contract Driver is ValSetDriver, OzAccessControl {
-    function initialize(
-        ValSetDriverInitParams memory valSetDriverInitParams,
-        address defaultAdmin
-    ) public virtual initializer {
+    function initialize(ValSetDriverInitParams memory valSetDriverInitParams, address defaultAdmin)
+        public
+        virtual
+        initializer
+    {
         __ValSetDriver_init(valSetDriverInitParams);
         __OzAccessControl_init();
 
