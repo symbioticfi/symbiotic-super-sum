@@ -170,7 +170,8 @@ services:
   deployer:
     build:
       context: ..
-      dockerfile: Dockerfile.deployer
+      dockerfile: network-scripts/deployer.Dockerfile
+    image: symbiotic-deployer
     container_name: symbiotic-deployer
     user: "1000:1000"
     volumes:
