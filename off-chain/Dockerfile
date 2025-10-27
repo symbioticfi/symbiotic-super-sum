@@ -42,4 +42,4 @@ COPY --from=builder /app/sum-node .
 ENTRYPOINT ["./sum-node"]
 
 # Default command (can be overridden)
-CMD ["--help"] 
+CMD ["--help"]

@@ -31,4 +31,4 @@ echo "Deployment completed successfully!"
 
 # Create deployment completion marker
 echo "$(date): Deployment completed successfully" > /deploy-data/deployment-complete.marker
-echo "Deployment completion marker created" 
+echo "Deployment completion marker created"

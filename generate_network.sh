@@ -54,31 +54,31 @@ get_user_input() {
     echo
     print_header "Symbiotic Network Configuration"
     echo
-    
+
     read -p "Enter number of operators (default: $DEFAULT_OPERATORS, max: $MAX_OPERATORS): " operators
     operators=${operators:-$DEFAULT_OPERATORS}
     validate_number "$operators" "Number of operators"
-    
+
     read -p "Enter number of commiters (default: $DEFAULT_COMMITERS): " commiters
     commiters=${commiters:-$DEFAULT_COMMITERS}
     validate_number "$commiters" "Number of commiters"
-    
+
     read -p "Enter number of aggregators (default: $DEFAULT_AGGREGATORS): " aggregators
     aggregators=${aggregators:-$DEFAULT_AGGREGATORS}
     validate_number "$aggregators" "Number of aggregators"
-    
+
     # Validate that commiters + aggregators <= operators
     total_special_roles=$((commiters + aggregators))
     if [ "$total_special_roles" -gt "$operators" ]; then
         print_error "Total commiters ($commiters) + aggregators ($aggregators) cannot exceed total operators ($operators)"
         exit 1
     fi
-    
+
     if [ "$operators" -gt $MAX_OPERATORS ]; then
         print_error "Maximum $MAX_OPERATORS operators supported. Requested: $operators"
         exit 1
     fi
-    
+
     print_status "Configuration:"
     print_status "  Operators: $operators"
     print_status "  Committers: $commiters"
@@ -91,14 +91,14 @@ generate_docker_compose() {
     local operators=$1
     local commiters=$2
     local aggregators=$3
-    
+
     local network_dir="temp-network"
-    
+
     if [ -d "$network_dir" ]; then
         print_status "Cleaning up existing $network_dir directory..."
         rm -rf "$network_dir"
     fi
-    
+
     mkdir -p "$network_dir/deploy-data"
     chmod 777 "$network_dir/deploy-data"
 
@@ -127,7 +127,7 @@ generate_docker_compose() {
     local anvil_settlement_port=8546
     local relay_start_port=8081
     local sum_start_port=9091
-    
+
     cat > "$network_dir/docker-compose.yml" << EOF
 services:
   # Main Anvil local Ethereum network (Chain ID: 31337)
@@ -214,7 +214,7 @@ EOF
     local committer_count=0
     local aggregator_count=0
     local signer_count=0
-    
+
     # Calculate symb private key properly
     # ECDSA secp256k1 private keys must be 32 bytes (64 hex chars) and within range [1, n-1]
     # where n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
@@ -225,7 +225,7 @@ EOF
         local port=$((relay_start_port + i - 1))
         local storage_dir="data-$(printf "%02d" $i)"
         local key_index=$((i - 1))
-        
+
         SYMB_PRIVATE_KEY_DECIMAL=$(($BASE_PRIVATE_KEY + $key_index))
         SYMB_SECONDARY_PRIVATE_KEY_DECIMAL=$(($BASE_PRIVATE_KEY + $key_index + 10000))
         SYMB_PRIVATE_KEY_HEX=$(printf "%064x" $SYMB_PRIVATE_KEY_DECIMAL)
@@ -237,7 +237,7 @@ EOF
             echo "ERROR: Generated private key is zero (invalid for ECDSA)"
             exit 1
         fi
-        
+
         cat >> "$network_dir/docker-compose.yml" << EOF
 
   # Relay sidecar $i ($role_name)
@@ -245,7 +245,7 @@ EOF
     image: symbioticfi/relay:$RELAY_IMAGE_TAG
     container_name: symbiotic-relay-$i
     command:
-      - /workspace/network-scripts/sidecar-start.sh 
+      - /workspace/network-scripts/sidecar-start.sh
       - symb/0/15/0x$SYMB_PRIVATE_KEY_HEX,symb/0/11/0x$SYMB_SECONDARY_PRIVATE_KEY_HEX,symb/1/0/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31337/0x$SYMB_PRIVATE_KEY_HEX,evm/1/31338/0x$SYMB_PRIVATE_KEY_HEX,p2p/1/0/$SWARM_KEY,p2p/1/1/$SYMB_PRIVATE_KEY_HEX
       - /app/$storage_dir
     ports:
@@ -265,7 +265,7 @@ EOF
 
         local relay_port=$((relay_start_port + i - 1))
         local sum_port=$((sum_start_port + i - 1))
-        
+
         cat >> "$network_dir/docker-compose.yml" << EOF
 
   # Sum node $i
@@ -290,7 +290,7 @@ EOF
 
 EOF
     done
-    
+
     cat >> "$network_dir/docker-compose.yml" << EOF
 
 networks:
@@ -304,25 +304,25 @@ EOF
 # Main execution
 main() {
     print_header "Symbiotic Network Generator"
-    
+
     # Check if required tools are available
     if ! command -v docker &> /dev/null; then
         print_error "Docker is not installed or not in PATH"
         exit 1
     fi
-    
+
     if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
         print_error "Docker Compose is not installed or not in PATH"
         exit 1
     fi
-    
+
     get_user_input
-    
+
 
     print_status "Generating Docker Compose configuration..."
     print_status "Creating $operators new operator accounts..."
     generate_docker_compose "$operators" "$commiters" "$aggregators"
-    
+
     print_header "Setup Complete!"
     echo
     print_status "Files generated in temp-network/ directory:"
@@ -346,4 +346,4 @@ main() {
     echo
 }
 
-main "$@" 
+main "$@"
