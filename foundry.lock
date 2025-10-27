@@ -5,4 +5,13 @@
   "lib/forge-std": {
     "rev": "77041d2ce690e692d6e03cc812b57d1ddaa4d505"
   },
+  "lib/network": {
+    "rev": "1a314887f73072e0142044a67db9f47cd58d670c"
+  },
+  "lib/relay-contracts-new": {
+    "branch": {
+      "name": "deploy-script-updates",
+      "rev": "c51cd9989857900b620b563b6be0ac3f1fdb0ce4"
+    }
+  }
 }

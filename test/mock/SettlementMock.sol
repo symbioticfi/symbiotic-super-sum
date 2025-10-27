@@ -35,7 +35,12 @@ contract SettlementMock {
         return true;
     }
 
-    function verifyQuorumSig(bytes calldata, uint8, uint256, bytes calldata) public pure returns (bool) {
+    function verifyQuorumSig(
+        bytes calldata,
+        uint8,
+        uint256,
+        bytes calldata
+    ) public pure returns (bool) {
         return true;
     }
 }

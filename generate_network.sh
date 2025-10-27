@@ -107,6 +107,14 @@ generate_docker_compose() {
     mkdir -p "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
     chmod 777 "$network_dir/out" "$network_dir/cache" "$network_dir/broadcast"
 
+    local deploy_config_src="script/my-relay-deploy.toml"
+    local deploy_config_dst="$network_dir/my-relay-deploy.toml"
+    if [ ! -f "$deploy_config_src" ]; then
+        print_error "Deployment config not found at $deploy_config_src"
+        exit 1
+    fi
+    print_status "Copying deployment config to $deploy_config_dst"
+    cp "$deploy_config_src" "$deploy_config_dst"
 
     for i in $(seq 1 $operators); do
         local storage_dir="$network_dir/data-$(printf "%02d" $i)"
@@ -171,8 +179,9 @@ services:
       - ./broadcast:/app/broadcast
       - ./out:/app/out
       - ./deploy-data:/deploy-data
+      - ./my-relay-deploy.toml:/my-relay-deploy.toml
     working_dir: /app
-    command: ./network-scripts/deploy-all.sh
+    command: ./network-scripts/deploy.sh
     depends_on:
       anvil:
         condition: service_healthy

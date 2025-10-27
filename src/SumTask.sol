@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {ISettlement} from "@symbioticfi/relay-contracts/interfaces/modules/settlement/ISettlement.sol";
+import {ISettlement} from "@symbioticfi/relay-contracts/src/interfaces/modules/settlement/ISettlement.sol";
 
 contract SumTask {
     error AlreadyResponded();
@@ -65,7 +65,10 @@ contract SumTask {
         return TaskStatus.CREATED;
     }
 
-    function createTask(uint256 numberA, uint256 numberB) public returns (bytes32 taskId) {
+    function createTask(
+        uint256 numberA,
+        uint256 numberB
+    ) public returns (bytes32 taskId) {
         uint256 nonce_ = nonce++;
         Task memory task = Task({numberA: numberA, numberB: numberB, nonce: nonce_, createdAt: uint48(block.timestamp)});
         taskId = keccak256(abi.encode(block.chainid, numberA, numberB, nonce_));
@@ -74,7 +77,12 @@ contract SumTask {
         emit CreateTask(taskId, task);
     }
 
-    function respondTask(bytes32 taskId, uint256 result, uint48 epoch, bytes calldata proof) public {
+    function respondTask(
+        bytes32 taskId,
+        uint256 result,
+        uint48 epoch,
+        bytes calldata proof
+    ) public {
         // check if the task is not responded yet
         if (responses[taskId].answeredAt > 0) {
             revert AlreadyResponded();
@@ -87,16 +95,14 @@ contract SumTask {
         }
 
         // verify the quorum signature
-        if (
-            !settlement.verifyQuorumSigAt(
+        if (!settlement.verifyQuorumSigAt(
                 abi.encode(keccak256(abi.encode(taskId, result))),
                 settlement.getRequiredKeyTagFromValSetHeaderAt(epoch),
                 settlement.getQuorumThresholdFromValSetHeaderAt(epoch),
                 proof,
                 epoch,
                 new bytes(0)
-            )
-        ) {
+            )) {
             revert InvalidQuorumSignature();
         }
 
