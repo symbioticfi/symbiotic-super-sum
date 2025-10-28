@@ -11,7 +11,7 @@ import {SumTask} from "../src/SumTask.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {BN254G2} from "./utils/BN254G2.sol";
 
-import {RelayDeploy} from "@symbioticfi/relay-contracts/script/deploy/RelayDeploy.sol";
+import {RelayDeploy} from "@symbioticfi/relay-contracts/script/RelayDeploy.sol";
 
 import {BN254} from "@symbioticfi/relay-contracts/src/libraries/utils/BN254.sol";
 import {KeyTags} from "@symbioticfi/relay-contracts/src/libraries/utils/KeyTags.sol";
@@ -111,7 +111,6 @@ contract MyRelayDeploy is RelayDeploy {
                 _deployContract(
                     NETWORK_SALT,
                     networkImpl,
-                    true,
                     abi.encodeCall(
                         INetwork.initialize,
                         (INetwork.NetworkInitParams({
@@ -267,6 +266,7 @@ contract MyRelayDeploy is RelayDeploy {
     function runDeployKeyRegistry() public override {
         deployKeyRegistry({proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: KEY_REGISTRY_SALT});
 
+        fundOperators();
         for (uint256 i; i < OPERATOR_COUNT; ++i) {
             configureOperatorKeys(i);
         }
@@ -297,6 +297,8 @@ contract MyRelayDeploy is RelayDeploy {
                 bytes32(0)
             );
         vm.stopBroadcast();
+
+        fundOperators();
         for (uint256 i; i < OPERATOR_COUNT; ++i) {
             registerOperator(i, OPERATOR_STAKE_AMOUNT);
         }
@@ -307,8 +309,11 @@ contract MyRelayDeploy is RelayDeploy {
         address settlement =
             deploySettlement({proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: SETTLEMENT_SALT});
         vm.broadcast();
-        address sumTask = deployCreate3(bytes32(SUM_TASK_SALT), abi.encodePacked(type(SumTask).creationCode, abi.encode(settlement)));
+        address sumTask =
+            deployCreate3(bytes32(SUM_TASK_SALT), abi.encodePacked(type(SumTask).creationCode, abi.encode(settlement)));
         config.set("sum_task", sumTask);
+
+        fundOperators();
     }
 
     function runDeployValSetDriver() public override {
@@ -320,9 +325,6 @@ contract MyRelayDeploy is RelayDeploy {
         Vm.Wallet memory operator = getOperator(index);
         (BN254.G1Point memory g1Key, BN254.G2Point memory g2Key) = getBLSKeys(operator.privateKey);
         KeyRegistry keyRegistry = KeyRegistry(getKeyRegistry().addr);
-
-        vm.broadcast();
-        payable(operator.addr).transfer(1 ether);
 
         vm.startBroadcast(operator.privateKey);
         bytes memory keyBytes = KeyBlsBn254.wrap(g1Key).toBytes();
@@ -375,6 +377,14 @@ contract MyRelayDeploy is RelayDeploy {
         stakingToken.approve(address(vault), stakeAmount);
         vault.deposit(address(stakingToken), stakeAmount);
         vm.stopBroadcast();
+    }
+
+    function fundOperators() public {
+        for (uint256 i; i < OPERATOR_COUNT; ++i) {
+            Vm.Wallet memory operator = getOperator(i);
+            vm.broadcast();
+            payable(operator.addr).transfer(1 ether);
+        }
     }
 
     function getOperator(uint256 index) public returns (VmSafe.Wallet memory operator) {

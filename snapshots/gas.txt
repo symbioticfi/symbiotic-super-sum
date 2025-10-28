@@ -3,7 +3,7 @@ No files changed, compilation skipped
 Ran 2 tests for test/SumTask.t.sol:SumTaskTest
 [PASS] test_CreateTask() (gas: 126182)
 [PASS] test_RespondToTask() (gas: 208810)
-Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 4.07ms (2.54ms CPU time)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 4.16ms (2.48ms CPU time)
 
 ╭----------------------------------+-----------------+--------+--------+--------+---------╮
 | src/SumTask.sol:SumTask Contract |                 |        |        |        |         |
@@ -46,4 +46,4 @@ Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 4.07ms (2.54ms CPU 
 ╰------------------------------------------------------+-----------------+------+--------+------+---------╯
 
 
-Ran 1 test suite in 7.54ms (4.07ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)
+Ran 1 test suite in 10.58ms (4.16ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)
