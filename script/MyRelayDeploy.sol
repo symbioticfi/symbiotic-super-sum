@@ -186,7 +186,7 @@ contract MyRelayDeploy is RelayDeploy {
     }
 
     function _settlementParams() internal override returns (address implementation, bytes memory initData) {
-        vm.broadcast();
+        vm.startBroadcast();
         implementation = address(new Settlement());
 
         address verifier;
@@ -205,6 +205,7 @@ contract MyRelayDeploy is RelayDeploy {
         } else {
             revert("Invalid verification type");
         }
+        vm.stopBroadcast();
         initData = abi.encodeCall(
             Settlement.initialize,
             (
@@ -321,7 +322,7 @@ contract MyRelayDeploy is RelayDeploy {
         KeyRegistry keyRegistry = KeyRegistry(getKeyRegistry().addr);
 
         vm.broadcast();
-        payable(operator.addr).transfer(5 ether);
+        payable(operator.addr).transfer(1 ether);
 
         vm.startBroadcast(operator.privateKey);
         bytes memory keyBytes = KeyBlsBn254.wrap(g1Key).toBytes();
@@ -361,10 +362,8 @@ contract MyRelayDeploy is RelayDeploy {
         IERC20 stakingToken = IERC20(getStakingToken());
         VotingPowers votingPowers = VotingPowers(getVotingPowerProvider());
 
-        vm.startBroadcast();
-        payable(operator.addr).transfer(1 ether);
+        vm.broadcast();
         stakingToken.transfer(operator.addr, stakeAmount);
-        vm.stopBroadcast();
 
         vm.startBroadcast(operator.privateKey);
         getCore().operatorRegistry.registerOperator();
