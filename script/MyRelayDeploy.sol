@@ -41,13 +41,13 @@ import {IValSetDriver} from "@symbioticfi/relay-contracts/src/interfaces/modules
 import {IEpochManager} from "@symbioticfi/relay-contracts/src/interfaces/modules/valset-driver/IEpochManager.sol";
 import {ISettlement} from "@symbioticfi/relay-contracts/src/interfaces/modules/settlement/ISettlement.sol";
 
-import {Network} from "@symbioticfi/network/src/Network.sol";
-import {DeployNetworkBase} from "@symbioticfi/network/script/base/DeployNetworkBase.sol";
-import {SetMiddlewareBase} from "@symbioticfi/network/script/actions/base/SetMiddlewareBase.sol";
+import {Network, INetwork} from "@symbioticfi/network/src/Network.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVault} from "@symbioticfi/core/src/interfaces/vault/IVault.sol";
+import {INetworkMiddlewareService} from "@symbioticfi/core/src/interfaces/service/INetworkMiddlewareService.sol";
 import {Logs} from "@symbioticfi/core/script/utils/Logs.sol";
+import {SymbioticCoreConstants} from "@symbioticfi/core/test/integration/SymbioticCoreConstants.sol";
 
 contract MyRelayDeploy is RelayDeploy {
     using KeyTags for uint8;
@@ -84,7 +84,7 @@ contract MyRelayDeploy is RelayDeploy {
     bytes11 public constant SETTLEMENT_SALT = bytes11("Settlement");
     bytes11 public constant VALSET_DRIVER_SALT = bytes11("VSDriver");
 
-    constructor() RelayDeploy("./script/deploy/examples/deploy-config.toml") {}
+    constructor() RelayDeploy("./temp-network/my-relay-deploy.toml") {}
 
     function getDeployerAddress() internal returns (address deployer) {
         (,, deployer) = vm.readCallers();
@@ -102,26 +102,33 @@ contract MyRelayDeploy is RelayDeploy {
         if (config.get("network").data.length == 0) {
             address[] memory proposersAndExecutors = new address[](1);
             proposersAndExecutors[0] = getDeployerAddress();
+            SymbioticCoreConstants.Core memory core = getCore();
+            vm.broadcast();
+            address networkImpl =
+                address(new Network(address(core.networkRegistry), address(core.networkMiddlewareService)));
             config.set(
                 "network",
-                new DeployNetworkBase()
-                    .run(
-                        DeployNetworkBase.DeployNetworkParams({
-                            name: "Example Network",
-                            metadataURI: "https://example.network",
-                            proposers: proposersAndExecutors,
-                            executors: proposersAndExecutors,
-                            defaultAdminRoleHolder: getDeployerAddress(),
-                            nameUpdateRoleHolder: getDeployerAddress(),
-                            metadataURIUpdateRoleHolder: getDeployerAddress(),
-                            globalMinDelay: 0,
-                            upgradeProxyMinDelay: 0,
-                            setMiddlewareMinDelay: 0,
-                            setMaxNetworkLimitMinDelay: 0,
-                            setResolverMinDelay: 0,
-                            salt: NETWORK_SALT
-                        })
-                    )
+                _deployContract(
+                    NETWORK_SALT,
+                    networkImpl,
+                    true,
+                    abi.encodeCall(
+                        INetwork.initialize,
+                        (INetwork.NetworkInitParams({
+                                globalMinDelay: 0,
+                                delayParams: new INetwork.DelayParams[](0),
+                                proposers: proposersAndExecutors,
+                                executors: proposersAndExecutors,
+                                name: "Example Network",
+                                metadataURI: "https://example.network",
+                                defaultAdminRoleHolder: getDeployerAddress(),
+                                nameUpdateRoleHolder: getDeployerAddress(),
+                                metadataURIUpdateRoleHolder: getDeployerAddress()
+                            }))
+                    ),
+                    getDeployerAddress(),
+                    false
+                )
             );
         }
         return config.get("network").toAddress();
@@ -268,11 +275,27 @@ contract MyRelayDeploy is RelayDeploy {
         address votingPowerProvider = deployVotingPowerProvider({
             proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: VOTING_POWER_PROVIDER_SALT
         });
-        new SetMiddlewareBase(
-                SetMiddlewareBase.SetMiddlewareParams({
-                    network: getNetwork(), middleware: votingPowerProvider, delay: 0, salt: NETWORK_SALT
-                })
-            ).runScheduleAndExecute();
+        address network = getNetwork();
+        SymbioticCoreConstants.Core memory core = getCore();
+        vm.startBroadcast(getDeployerAddress());
+        Network(payable(network))
+            .schedule(
+                address(core.networkMiddlewareService),
+                0,
+                abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
+                bytes32(0),
+                bytes32(0),
+                0
+            );
+        Network(payable(network))
+            .execute(
+                address(core.networkMiddlewareService),
+                0,
+                abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
+                bytes32(0),
+                bytes32(0)
+            );
+        vm.stopBroadcast();
         for (uint256 i; i < OPERATOR_COUNT; ++i) {
             registerOperator(i, OPERATOR_STAKE_AMOUNT);
         }
@@ -282,10 +305,9 @@ contract MyRelayDeploy is RelayDeploy {
     function runDeploySettlement() public override {
         address settlement =
             deploySettlement({proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: SETTLEMENT_SALT});
-        config.set(
-            "sum_task",
-            _deployContract(SUM_TASK_SALT, address(new SumTask(settlement)), "", getDeployerAddress(), false)
-        );
+        vm.broadcast();
+        address sumTask = deployCreate3(bytes32(SUM_TASK_SALT), abi.encodePacked(type(SumTask).creationCode, abi.encode(settlement)));
+        config.set("sum_task", sumTask);
     }
 
     function runDeployValSetDriver() public override {
@@ -297,6 +319,9 @@ contract MyRelayDeploy is RelayDeploy {
         Vm.Wallet memory operator = getOperator(index);
         (BN254.G1Point memory g1Key, BN254.G2Point memory g2Key) = getBLSKeys(operator.privateKey);
         KeyRegistry keyRegistry = KeyRegistry(getKeyRegistry().addr);
+
+        vm.broadcast();
+        payable(operator.addr).transfer(5 ether);
 
         vm.startBroadcast(operator.privateKey);
         bytes memory keyBytes = KeyBlsBn254.wrap(g1Key).toBytes();

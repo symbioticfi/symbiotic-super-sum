@@ -11,7 +11,7 @@
   "lib/relay-contracts-new": {
     "branch": {
       "name": "deploy-script-updates",
-      "rev": "25bc077b00bc288b74df9d5ae2fb3db3e29bdbad"
+      "rev": "1c9bc3270564dc748a583cc328831cb866937b71"
     }
   }
 }
