@@ -1,7 +1,5 @@
 #!/bin/sh
 
-apk add --no-cache jq
-
 DRIVER_ADDRESS=0x43C27243F96591892976FFf886511807B65a33d5
 
 cat > /tmp/sidecar.yaml << EOFCONFIG
