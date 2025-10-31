@@ -30,6 +30,9 @@ jobs:
         with:
           version: stable
 
+      - name: Install npm dependencies
+        run: npm install
+
       - name: Run Forge fmt check
         run: forge fmt --check
 
