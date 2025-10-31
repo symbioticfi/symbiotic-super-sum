@@ -115,7 +115,7 @@ rm -rf temp-network
 ```bash
 taskID=$(cast send --rpc-url http://127.0.0.1:8545 --json \
  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
- 0x4826533B4897376654Bb4d4AD88B7faFD0C98528 \
+ 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF \
  "createTask(uint256,uint256)" 33 9 | jq -r '.logs[0].topics[1]')
 ```
 
@@ -124,7 +124,7 @@ or
 ```bash
 taskID=$(cast send --rpc-url http://127.0.0.1:8546 --json \
  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
- 0x5FC8d32690cc91D4c39d9d3abcBD16989F875707 \
+ 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF \
  "createTask(uint256,uint256)" 33 9 | jq -r '.logs[0].topics[1]')
 ```
 
@@ -132,7 +132,7 @@ taskID=$(cast send --rpc-url http://127.0.0.1:8546 --json \
 
 ```bash
 result=$(cast call --rpc-url http://127.0.0.1:8545 \
- 0x4826533B4897376654Bb4d4AD88B7faFD0C98528 \
+ 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF \
  "responses(bytes32)" $taskID)
 cast decode-abi --json "data()(uint48,uint256)" $result
 ```
@@ -141,7 +141,7 @@ or
 
 ```bash
 result=$(cast call --rpc-url http://127.0.0.1:8546 \
- 0x5FC8d32690cc91D4c39d9d3abcBD16989F875707 \
+ 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF \
  "responses(bytes32)" $taskID)
 cast decode-abi --json "data()(uint48,uint256)" $result
 ```
@@ -192,3 +192,19 @@ docker stats
 # Monitor specific container
 docker stats symbiotic-anvil symbiotic-relay-1 symbiotic-sum-node-1
 ```
+
+## Local Deployments
+
+http://anvil:8545:
+
+- `ValSetDriver`: 0x43C27243F96591892976FFf886511807B65a33d5
+- `SumTask`: 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF
+- `VotingPowerProvider`: 0x369c72C823A4Fc8d2A3A5C3B15082fb34A342878
+- `KeyRegistry`: 0xe1557A820E1f50dC962c3392b875Fe0449eb184F
+- `Settlement`: 0x882B9439598239d9626164f7578F812Ef324F5Cb
+- `Network`: 0xfdc4b2cA12dD7b1463CC01D8022a49BDcf5cFa24
+
+http://anvil-settlement:8546:
+
+- `SumTask`: 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF
+- `Settlement`: 0x882B9439598239d9626164f7578F812Ef324F5Cb

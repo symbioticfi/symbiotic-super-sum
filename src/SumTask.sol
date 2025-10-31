@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {ISettlement} from "@symbioticfi/relay-contracts/interfaces/modules/settlement/ISettlement.sol";
+import {ISettlement} from "@symbioticfi/relay-contracts/src/interfaces/modules/settlement/ISettlement.sol";
 
 contract SumTask {
     error AlreadyResponded();
@@ -41,15 +41,11 @@ contract SumTask {
 
     mapping(bytes32 => Response) public responses;
 
-    constructor(
-        address _settlement
-    ) {
+    constructor(address _settlement) {
         settlement = ISettlement(_settlement);
     }
 
-    function getTaskStatus(
-        bytes32 taskId
-    ) public view returns (TaskStatus) {
+    function getTaskStatus(bytes32 taskId) public view returns (TaskStatus) {
         if (responses[taskId].answeredAt > 0) {
             return TaskStatus.RESPONDED;
         }
@@ -87,16 +83,14 @@ contract SumTask {
         }
 
         // verify the quorum signature
-        if (
-            !settlement.verifyQuorumSigAt(
+        if (!settlement.verifyQuorumSigAt(
                 abi.encode(keccak256(abi.encode(taskId, result))),
                 settlement.getRequiredKeyTagFromValSetHeaderAt(epoch),
                 settlement.getQuorumThresholdFromValSetHeaderAt(epoch),
                 proof,
                 epoch,
                 new bytes(0)
-            )
-        ) {
+            )) {
             revert InvalidQuorumSignature();
         }
 

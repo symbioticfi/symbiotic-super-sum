@@ -40,4 +40,4 @@ dist/
 coverage.txt
 
 # Go specific
-vendor/ 
+vendor/

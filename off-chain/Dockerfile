@@ -26,8 +26,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # Runtime stage
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates tzdata jq
-
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
 
 # Set working directory
 WORKDIR /app
@@ -42,4 +42,4 @@ COPY --from=builder /app/sum-node .
 ENTRYPOINT ["./sum-node"]
 
 # Default command (can be overridden)
-CMD ["--help"] 
+CMD ["--help"]
