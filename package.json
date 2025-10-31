@@ -1,6 +1,6 @@
 {
     "name": "@symbioticfi/symbiotic-super-sum",
-    "version": "1.0.0-alpha.0",
+    "version": "1.0.0",
     "description": "Simple task-based network built with Symbiotic Relay",
     "homepage": "https://symbiotic.fi/symbiotic-super-sum",
     "bugs": "https://github.com/symbioticfi/symbiotic-super-sum/issues",
@@ -10,8 +10,7 @@
         "examples/**/*",
         "src/**/*",
         "script/**/*",
-        "test/mocks/**/*",
-        "out/**/*"
+        "test/mocks/**/*"
     ],
     "repository": {
         "type": "git",
@@ -25,10 +24,10 @@
         "security"
     ],
     "dependencies": {
-        "@openzeppelin/contracts": "5.3.0",
-        "@openzeppelin/contracts-upgradeable": "5.3.0",
-        "@symbioticfi/core": "1.0.2",
-        "@symbioticfi/relay-contracts": "^1.0.0-alpha.3",
-        "@symbioticfi/network": "1.0.0-rc.0"
+        "@openzeppelin/contracts": "5.4.0",
+        "@openzeppelin/contracts-upgradeable": "5.4.0",
+        "@symbioticfi/core": "1.0.3",
+        "@symbioticfi/relay-contracts": "^1.0.0-rc.1",
+        "@symbioticfi/network": "1.0.0-rc.1"
     }
 }

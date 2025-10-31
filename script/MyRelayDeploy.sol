@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {Vm, VmSafe} from "@symbioticfi/relay-contracts/lib/forge-std/src/Vm.sol";
+import {Vm, VmSafe} from "forge-std/Vm.sol";
 
 import {VotingPowers} from "../src/symbiotic/VotingPowers.sol";
 import {KeyRegistry} from "../src/symbiotic/KeyRegistry.sol";

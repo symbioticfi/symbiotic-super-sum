@@ -1,10 +1,3 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
-[submodule "lib/network"]
-	path = lib/network
-	url = https://github.com/symbioticfi/network
-[submodule "lib/relay-contracts-new"]
-	path = lib/relay-contracts-new
-	url = https://github.com/symbioticfi/relay-contracts
-	branch = deploy-script-updates
