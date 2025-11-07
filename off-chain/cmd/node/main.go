@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -10,13 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"sum/internal/utils"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rpc"
 	v1 "github.com/symbioticfi/relay/api/client/v1"
 
 	"sum/internal/contracts"
@@ -132,6 +134,11 @@ var rootCmd = &cobra.Command{
 		evmClients = make(map[int64]*ethclient.Client)
 		sumContracts = make(map[int64]*contracts.SumTask)
 		tasks = make(map[common.Hash]TaskState)
+		lastBlocks = make(map[int64]uint64)
+
+		// Approximate blocks in 24 hours (assuming ~12 second block time)
+		const blocksIn24Hours uint64 = 7200
+
 		for i, evmRpcURL := range cfg.evmRpcURLs {
 			evmClient, err := ethclient.DialContext(ctx, evmRpcURL)
 			if err != nil {
@@ -151,42 +158,63 @@ var rootCmd = &cobra.Command{
 
 			evmClients[chainID.Int64()] = evmClient
 			sumContracts[chainID.Int64()] = sumContract
+
+			finalizedBlockNumber, err := getFinalizedBlockNumber(ctx, evmClient)
+			if err != nil {
+				return errors.Errorf("failed to get finalized block number for chain %d: %w", chainID, err)
+			}
+
+			// Start from 24 hours ago, but don't go below block 0
+			if finalizedBlockNumber > blocksIn24Hours {
+				lastBlocks[chainID.Int64()] = finalizedBlockNumber - blocksIn24Hours
+			}
+
+			slog.InfoContext(ctx, "Initialized chain", "chainID", chainID, "finalizedBlock", finalizedBlockNumber, "startBlock", lastBlocks[chainID.Int64()])
 		}
 
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
-		lastBlocks = make(map[int64]uint64)
-
 		for {
 			select {
 			case <-ticker.C:
 				for chainID, evmClient := range evmClients {
-					endBlock, err := evmClient.BlockByNumber(ctx, new(big.Int).SetInt64(rpc.FinalizedBlockNumber.Int64()))
+					endBlockNumber, err := getFinalizedBlockNumber(ctx, evmClient)
 					if err != nil {
-						return errors.Errorf("failed to get finalized block number: %w", err)
+						return errors.Errorf("failed to get finalized block number for chain %d: %w", chainID, err)
 					}
-					endBlockNumber := endBlock.NumberU64()
 
 					lastBlock := lastBlocks[chainID]
 
-					slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", lastBlock, "toBlock", endBlockNumber)
+					// Process in chunks to avoid exceeding RPC provider's block range limit
+					const maxBlockRange uint64 = 10000
 
-					events, err := sumContracts[chainID].FilterCreateTask(&bind.FilterOpts{
-						Context: ctx,
-						Start:   lastBlock,
-						End:     &endBlockNumber,
-					}, [][32]byte{})
-					if err != nil {
-						return errors.Errorf("failed to filter new task created events: %w", err)
+					for fromBlock := lastBlock; fromBlock <= endBlockNumber; {
+						toBlock := fromBlock + maxBlockRange - 1
+						if toBlock > endBlockNumber {
+							toBlock = endBlockNumber
+						}
+
+						slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", fromBlock, "toBlock", toBlock)
+
+						events, err := sumContracts[chainID].FilterCreateTask(&bind.FilterOpts{
+							Context: ctx,
+							Start:   fromBlock,
+							End:     &toBlock,
+						}, [][32]byte{})
+						if err != nil {
+							return errors.Errorf("failed to filter new task created events: %w", err)
+						}
+
+						err = processNewTasks(ctx, chainID, events)
+						if err != nil {
+							fmt.Printf("Error processing new task event: %v\n", err)
+						}
+
+						fromBlock = toBlock + 1
 					}
 
 					lastBlocks[chainID] = endBlockNumber + 1
-
-					err = processNewTasks(ctx, chainID, events)
-					if err != nil {
-						fmt.Printf("Error processing new task event: %v\n", err)
-					}
 				}
 				err = fetchResults(ctx)
 				if err != nil {
@@ -197,6 +225,21 @@ var rootCmd = &cobra.Command{
 			}
 		}
 	},
+}
+
+func getFinalizedBlockNumber(ctx context.Context, evmClient *ethclient.Client) (uint64, error) {
+	// Get finalized block and set starting point to 24 hours ago
+	var raw json.RawMessage
+	err := evmClient.Client().CallContext(ctx, &raw, "eth_getBlockByNumber", "finalized", true)
+	if err != nil {
+		return 0, errors.Errorf("failed to get finalized block number for chain: %w", err)
+	}
+	var head *types.Header
+	if err := json.Unmarshal(raw, &head); err != nil {
+		return 0, errors.Errorf("failed to unmarshal finalized block for chain: %w", err)
+	}
+
+	return head.Number.Uint64(), nil
 }
 
 func fetchResults(ctx context.Context) error {
