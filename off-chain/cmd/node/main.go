@@ -136,9 +136,6 @@ var rootCmd = &cobra.Command{
 		tasks = make(map[common.Hash]TaskState)
 		lastBlocks = make(map[int64]uint64)
 
-		// Approximate blocks in 24 hours (assuming ~12 second block time)
-		const blocksIn24Hours uint64 = 7200
-
 		for i, evmRpcURL := range cfg.evmRpcURLs {
 			evmClient, err := ethclient.DialContext(ctx, evmRpcURL)
 			if err != nil {
@@ -163,11 +160,7 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				return errors.Errorf("failed to get finalized block number for chain %d: %w", chainID, err)
 			}
-
-			// Start from 24 hours ago, but don't go below block 0
-			if finalizedBlockNumber > blocksIn24Hours {
-				lastBlocks[chainID.Int64()] = finalizedBlockNumber - blocksIn24Hours
-			}
+			lastBlocks[chainID.Int64()] = finalizedBlockNumber
 
 			slog.InfoContext(ctx, "Initialized chain", "chainID", chainID, "finalizedBlock", finalizedBlockNumber, "startBlock", lastBlocks[chainID.Int64()])
 		}
@@ -186,35 +179,23 @@ var rootCmd = &cobra.Command{
 
 					lastBlock := lastBlocks[chainID]
 
-					// Process in chunks to avoid exceeding RPC provider's block range limit
-					const maxBlockRange uint64 = 10000
+					slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", lastBlock, "toBlock", endBlockNumber)
 
-					for fromBlock := lastBlock; fromBlock <= endBlockNumber; {
-						toBlock := fromBlock + maxBlockRange - 1
-						if toBlock > endBlockNumber {
-							toBlock = endBlockNumber
-						}
-
-						slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", fromBlock, "toBlock", toBlock)
-
-						events, err := sumContracts[chainID].FilterCreateTask(&bind.FilterOpts{
-							Context: ctx,
-							Start:   fromBlock,
-							End:     &toBlock,
-						}, [][32]byte{})
-						if err != nil {
-							return errors.Errorf("failed to filter new task created events: %w", err)
-						}
-
-						err = processNewTasks(ctx, chainID, events)
-						if err != nil {
-							fmt.Printf("Error processing new task event: %v\n", err)
-						}
-
-						fromBlock = toBlock + 1
+					events, err := sumContracts[chainID].FilterCreateTask(&bind.FilterOpts{
+						Context: ctx,
+						Start:   lastBlock,
+						End:     &endBlockNumber,
+					}, [][32]byte{})
+					if err != nil {
+						return errors.Errorf("failed to filter new task created events: %w", err)
 					}
 
 					lastBlocks[chainID] = endBlockNumber + 1
+
+					err = processNewTasks(ctx, chainID, events)
+					if err != nil {
+						fmt.Printf("Error processing new task event: %v\n", err)
+					}
 				}
 				err = fetchResults(ctx)
 				if err != nil {
