@@ -213,11 +213,11 @@ func getFinalizedBlockNumber(ctx context.Context, evmClient *ethclient.Client) (
 	var raw json.RawMessage
 	err := evmClient.Client().CallContext(ctx, &raw, "eth_getBlockByNumber", "finalized", true)
 	if err != nil {
-		return 0, errors.Errorf("failed to get finalized block number for chain: %w", err)
+		return 0, errors.Errorf("failed to get finalized block number: %w", err)
 	}
 	var head *types.Header
 	if err := json.Unmarshal(raw, &head); err != nil {
-		return 0, errors.Errorf("failed to unmarshal finalized block for chain: %w", err)
+		return 0, errors.Errorf("failed to unmarshal finalized block: %w", err)
 	}
 
 	return head.Number.Uint64(), nil
