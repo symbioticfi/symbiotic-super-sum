@@ -179,6 +179,11 @@ var rootCmd = &cobra.Command{
 
 					lastBlock := lastBlocks[chainID]
 
+					if endBlockNumber < lastBlock {
+						slog.DebugContext(ctx, "Finalized block number is behind last processed block, skipping", "chainID", chainID, "finalizedBlock", endBlockNumber, "lastProcessedBlock", lastBlock)
+						continue
+					}
+
 					slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", lastBlock, "toBlock", endBlockNumber)
 
 					events, err := sumContracts[chainID].FilterCreateTask(&bind.FilterOpts{
