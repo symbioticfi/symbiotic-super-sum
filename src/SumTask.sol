@@ -2,8 +2,9 @@
 pragma solidity ^0.8.25;
 
 import {ISettlement} from "@symbioticfi/relay-contracts/src/interfaces/modules/settlement/ISettlement.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SumTask {
+contract SumTask is Ownable {
     error AlreadyResponded();
     error InvalidQuorumSignature();
     error InvalidVerifyingEpoch();
@@ -31,6 +32,8 @@ contract SumTask {
 
     event RespondTask(bytes32 indexed taskId, Response response);
 
+    event Slash(address indexed operator, uint256 amount, uint48 captureTimestamp);
+
     uint32 public constant TASK_EXPIRY = 12_000;
 
     ISettlement public settlement;
@@ -41,7 +44,7 @@ contract SumTask {
 
     mapping(bytes32 => Response) public responses;
 
-    constructor(address _settlement) {
+    constructor(address _settlement, address _owner) Ownable(_owner) {
         settlement = ISettlement(_settlement);
     }
 
@@ -98,5 +101,9 @@ contract SumTask {
         responses[taskId] = response;
 
         emit RespondTask(taskId, response);
+    }
+
+    function slash(address operator, uint256 amount, uint48 captureTimestamp) onlyOwner public {
+        emit Slash(operator, amount, captureTimestamp);
     }
 }

@@ -9,7 +9,7 @@ contract SumTaskTest is Test {
     SumTask public sumTask;
 
     function setUp() public {
-        sumTask = new SumTask(address(new SettlementMock()));
+        sumTask = new SumTask(address(new SettlementMock()), address(this));
     }
 
     function test_CreateTask() public {

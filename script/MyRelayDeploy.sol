@@ -173,7 +173,7 @@ contract MyRelayDeploy is RelayDeploy {
                     config: IOpNetVaultAutoDeploy.AutoDeployConfig({
                         epochDuration: SLASHING_WINDOW,
                         collateral: getStakingToken(),
-                        burner: address(0),
+                        burner: address(0x000000000000000000000000000000000000dEaD),
                         withSlasher: true,
                         isBurnerHook: false
                     }),
@@ -310,7 +310,7 @@ contract MyRelayDeploy is RelayDeploy {
             deploySettlement({proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: SETTLEMENT_SALT});
         vm.broadcast();
         address sumTask =
-            deployCreate3(bytes32(SUM_TASK_SALT), abi.encodePacked(type(SumTask).creationCode, abi.encode(settlement)));
+            deployCreate3(bytes32(SUM_TASK_SALT), abi.encodePacked(type(SumTask).creationCode, abi.encode(settlement, getDeployerAddress())));
         config.set("sum_task", sumTask);
 
         fundOperators();

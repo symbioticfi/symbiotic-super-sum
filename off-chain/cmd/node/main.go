@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -11,23 +12,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"sum/internal/utils"
-
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	v1 "github.com/symbioticfi/relay/api/client/v1"
-
-	"sum/internal/contracts"
-
 	"github.com/ethereum/go-ethereum/common"
-
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-errors/errors"
 	"github.com/spf13/cobra"
+	v1 "github.com/symbioticfi/relay/api/client/v1"
+
+	"sum/internal/contracts"
+	"sum/internal/utils"
 )
 
 const (
@@ -38,17 +36,22 @@ const (
 )
 
 type config struct {
-	relayApiURL       string
-	evmRpcURLs        []string
-	contractAddresses []string
-	privateKey        string
-	logLevel          string
+	relayApiURL        string
+	evmRpcURLs         []string
+	contractAddresses  []string
+	votingPowerAddress string
+	privateKey         string
+	logLevel           string
 }
 
 var relayClient *v1.SymbioticClient
 var evmClients map[int64]*ethclient.Client
 var sumContracts map[int64]*contracts.SumTask
+var votingPowerContracts map[int64]*contracts.VotingPowers
+var sumContractAddresses map[int64]common.Address
 var lastBlocks map[int64]uint64
+var slashRequests map[string]*SlashRequest
+var nodePrivateKey *ecdsa.PrivateKey
 
 func main() {
 	slog.Info("Running sum task off-chain client", "args", os.Args)
@@ -64,6 +67,7 @@ func run() error {
 	rootCmd.PersistentFlags().StringVarP(&cfg.relayApiURL, "relay-api-url", "r", "", "Relay API URL")
 	rootCmd.PersistentFlags().StringSliceVarP(&cfg.evmRpcURLs, "evm-rpc-urls", "e", []string{}, "EVM RPC URLs separated by comma (e.g., 'https://mainnet.infura.io/v3/,...')")
 	rootCmd.PersistentFlags().StringSliceVarP(&cfg.contractAddresses, "contract-addresses", "a", []string{}, "SumTask contracts' addresses corresponding to the RPC URLs separated by comma (e.g., '0x4826533B4897376654Bb4d4AD88B7faFD0C98528,...')")
+	rootCmd.PersistentFlags().StringVarP(&cfg.votingPowerAddress, "voting-power-address", "v", "", "VotingPowers contract address used on all chains.")
 	rootCmd.PersistentFlags().StringVarP(&cfg.privateKey, "private-key", "p", "", "Task response private key")
 	rootCmd.PersistentFlags().StringVarP(&cfg.logLevel, "log-level", "l", "info", "Log level")
 
@@ -75,6 +79,9 @@ func run() error {
 	}
 	if err := rootCmd.MarkPersistentFlagRequired("contract-addresses"); err != nil {
 		return errors.Errorf("failed to mark contract-addresses as required: %w", err)
+	}
+	if err := rootCmd.MarkPersistentFlagRequired("voting-power-address"); err != nil {
+		return errors.Errorf("failed to mark voting-power-address as required: %w", err)
 	}
 	if err := rootCmd.MarkPersistentFlagRequired("private-key"); err != nil {
 		return errors.Errorf("failed to mark private-key as required: %w", err)
@@ -95,7 +102,23 @@ type TaskState struct {
 	Statuses     map[int64]uint8
 }
 
+type SlashRequest struct {
+	ID               string
+	ChainID          int64
+	Operator         common.Address
+	Amount           *big.Int
+	CaptureTimestamp *big.Int
+	TxHash           *common.Hash
+}
+
 var tasks map[common.Hash]TaskState
+var (
+	slashEventSignature = crypto.Keccak256Hash([]byte("Slash(address,uint256,uint48)"))
+	slashEventArguments = abi.Arguments{
+		{Type: mustABIType("uint256")},
+		{Type: mustABIType("uint48")},
+	}
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -131,15 +154,25 @@ var rootCmd = &cobra.Command{
 		if len(cfg.contractAddresses) != len(cfg.evmRpcURLs) {
 			return errors.Errorf("mismatched lengths: evm-rpc-urls=%d, contract-addresses=%d", len(cfg.evmRpcURLs), len(cfg.contractAddresses))
 		}
+		if cfg.votingPowerAddress == "" {
+			return errors.Errorf("no voting power address provided")
+		}
+		nodePrivateKey, err = crypto.HexToECDSA(cfg.privateKey)
+		if err != nil {
+			return errors.Errorf("failed to parse private key: %w", err)
+		}
 		evmClients = make(map[int64]*ethclient.Client)
 		sumContracts = make(map[int64]*contracts.SumTask)
+		votingPowerContracts = make(map[int64]*contracts.VotingPowers)
+		sumContractAddresses = make(map[int64]common.Address)
 		tasks = make(map[common.Hash]TaskState)
+		slashRequests = make(map[string]*SlashRequest)
 		lastBlocks = make(map[int64]uint64)
 
 		for i, evmRpcURL := range cfg.evmRpcURLs {
 			evmClient, err := ethclient.DialContext(ctx, evmRpcURL)
 			if err != nil {
-				return errors.Errorf("failed to connect to RPC URL '%s': %w", evmRpcURL, err)
+				         return errors.Errorf("failed to connect to RPC URL '%s': %w", evmRpcURL, err)
 			}
 
 			chainID, err := evmClient.ChainID(ctx)
@@ -155,6 +188,14 @@ var rootCmd = &cobra.Command{
 
 			evmClients[chainID.Int64()] = evmClient
 			sumContracts[chainID.Int64()] = sumContract
+			sumContractAddresses[chainID.Int64()] = addr
+
+			votingPowerAddr := common.HexToAddress(cfg.votingPowerAddress)
+			votingPowerContract, err := contracts.NewVotingPowers(votingPowerAddr, evmClient)
+			if err != nil {
+				return errors.Errorf("failed to create voting powers contract for %s on chain %d: %w", votingPowerAddr.Hex(), chainID, err)
+			}
+			votingPowerContracts[chainID.Int64()] = votingPowerContract
 
 			finalizedBlockNumber, err := getFinalizedBlockNumber(ctx, evmClient)
 			if err != nil {
@@ -177,34 +218,48 @@ var rootCmd = &cobra.Command{
 						return errors.Errorf("failed to get finalized block number for chain %d: %w", chainID, err)
 					}
 
-					lastBlock := lastBlocks[chainID]
+					startBlock := lastBlocks[chainID]
 
-					if endBlockNumber < lastBlock {
-						slog.DebugContext(ctx, "Finalized block number is behind last processed block, skipping", "chainID", chainID, "finalizedBlock", endBlockNumber, "lastProcessedBlock", lastBlock)
+					if endBlockNumber < startBlock {
+						slog.DebugContext(ctx, "Finalized block number is behind last processed block, skipping", "chainID", chainID, "finalizedBlock", endBlockNumber, "lastProcessedBlock", startBlock)
 						continue
 					}
 
-					slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", lastBlock, "toBlock", endBlockNumber)
+					slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", startBlock, "toBlock", endBlockNumber)
 
 					events, err := sumContracts[chainID].FilterCreateTask(&bind.FilterOpts{
 						Context: ctx,
-						Start:   lastBlock,
+						Start:   startBlock,
 						End:     &endBlockNumber,
 					}, [][32]byte{})
 					if err != nil {
 						return errors.Errorf("failed to filter new task created events: %w", err)
 					}
 
-					lastBlocks[chainID] = endBlockNumber + 1
-
 					err = processNewTasks(ctx, chainID, events)
 					if err != nil {
 						fmt.Printf("Error processing new task event: %v\n", err)
 					}
+
+					slashLogs, err := fetchSlashLogs(ctx, chainID, startBlock, endBlockNumber)
+					if err != nil {
+						return errors.Errorf("failed to filter slash events for chain %d: %w", chainID, err)
+					}
+
+					err = processSlashEvents(ctx, chainID, slashLogs)
+					if err != nil {
+						fmt.Printf("Error processing slash events: %v\n", err)
+					}
+
+					lastBlocks[chainID] = endBlockNumber + 1
 				}
 				err = fetchResults(ctx)
 				if err != nil {
 					fmt.Printf("Error fetching results: %v\n", err)
+				}
+				err = processSlashSubmissions(ctx)
+				if err != nil {
+					fmt.Printf("Error submitting slash transaction: %v\n", err)
 				}
 			case <-ctx.Done():
 				return nil
@@ -280,16 +335,15 @@ func fetchResults(ctx context.Context) error {
 }
 
 func processProof(ctx context.Context, taskID common.Hash) error {
-	pk, err := crypto.HexToECDSA(cfg.privateKey)
-	if err != nil {
-		return errors.Errorf("failed to parse private key: %w", err)
+	if nodePrivateKey == nil {
+		return errors.Errorf("node private key is not initialized")
 	}
 	task := tasks[taskID]
 	for chainID, status := range task.Statuses {
 		if status == TaskResponded {
 			continue
 		}
-		txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(chainID))
+		txOpts, err := bind.NewKeyedTransactorWithChainID(nodePrivateKey, big.NewInt(chainID))
 		if err != nil {
 			return errors.Errorf("failed to create transactor: %w", err)
 		}
@@ -377,6 +431,148 @@ func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTask
 	return nil
 }
 
+func fetchSlashLogs(ctx context.Context, chainID int64, startBlock, endBlock uint64) ([]types.Log, error) {
+	if startBlock > endBlock {
+		return nil, nil
+	}
+
+	address, ok := sumContractAddresses[chainID]
+	if !ok {
+		return nil, errors.Errorf("sum contract address not found for chain %d", chainID)
+	}
+
+	fromBlock := new(big.Int).SetUint64(startBlock)
+	toBlock := new(big.Int).SetUint64(endBlock)
+
+	query := ethereum.FilterQuery{
+		FromBlock: fromBlock,
+		ToBlock:   toBlock,
+		Addresses: []common.Address{address},
+		Topics:    [][]common.Hash{{slashEventSignature}},
+	}
+
+	return evmClients[chainID].FilterLogs(ctx, query)
+}
+
+func processSlashEvents(ctx context.Context, chainID int64, logs []types.Log) error {
+	for _, log := range logs {
+		req, err := parseSlashLog(chainID, log)
+		if err != nil {
+			return err
+		}
+		if _, exists := slashRequests[req.ID]; exists {
+			continue
+		}
+		slashRequests[req.ID] = req
+		slog.InfoContext(ctx, "Received slash request", "id", req.ID, "chainID", chainID, "operator", req.Operator.Hex(), "amount", req.Amount.String(), "captureTimestamp", req.CaptureTimestamp.String())
+	}
+	return nil
+}
+
+func parseSlashLog(chainID int64, log types.Log) (*SlashRequest, error) {
+	if len(log.Topics) < 2 {
+		return nil, errors.Errorf("slash log missing topics on chain %d", chainID)
+	}
+
+	values, err := slashEventArguments.Unpack(log.Data)
+	if err != nil {
+		return nil, errors.Errorf("failed to unpack slash event: %w", err)
+	}
+
+	amount, ok := values[0].(*big.Int)
+	if !ok {
+		return nil, errors.Errorf("invalid slash amount type %T", values[0])
+	}
+	captureTimestamp, ok := values[1].(*big.Int)
+	if !ok {
+		return nil, errors.Errorf("invalid slash capture timestamp type %T", values[1])
+	}
+
+	req := &SlashRequest{
+		ID:               slashRequestKey(chainID, log),
+		ChainID:          chainID,
+		Operator:         common.HexToAddress(log.Topics[1].Hex()),
+		Amount:           new(big.Int).Set(amount),
+		CaptureTimestamp: new(big.Int).Set(captureTimestamp),
+	}
+
+	return req, nil
+}
+
+func processSlashSubmissions(ctx context.Context) error {
+	if len(slashRequests) == 0 {
+		return nil
+	}
+	if nodePrivateKey == nil {
+		return errors.Errorf("node private key is not initialized")
+	}
+
+	var firstErr error
+
+	for id, req := range slashRequests {
+		if req.TxHash == nil {
+			txOpts, err := bind.NewKeyedTransactorWithChainID(nodePrivateKey, big.NewInt(req.ChainID))
+			if err != nil {
+				if firstErr == nil {
+					firstErr = errors.Errorf("failed to create slash transactor: %w", err)
+				}
+				continue
+			}
+			txOpts.Context = ctx
+
+			contract, ok := votingPowerContracts[req.ChainID]
+			if !ok {
+				err = errors.Errorf("voting powers contract missing for chain %d", req.ChainID)
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+
+			tx, err := contract.Slash(txOpts, req.Operator, req.Amount, req.CaptureTimestamp)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to submit slash transaction", "id", id, "chainID", req.ChainID, "error", err)
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+
+			hash := tx.Hash()
+			req.TxHash = &hash
+			slog.InfoContext(ctx, "Submitted slash transaction", "id", id, "chainID", req.ChainID, "tx", hash.Hex(), "operator", req.Operator.Hex())
+			continue
+		}
+
+		receipt, err := evmClients[req.ChainID].TransactionReceipt(ctx, *req.TxHash)
+		if err != nil {
+			if errors.Is(err, ethereum.NotFound) {
+				continue
+			}
+			slog.ErrorContext(ctx, "Failed to fetch slash transaction receipt", "id", id, "chainID", req.ChainID, "tx", req.TxHash.Hex(), "error", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+
+		if receipt.Status == types.ReceiptStatusSuccessful {
+			slog.InfoContext(ctx, "Slash transaction confirmed", "id", id, "chainID", req.ChainID, "tx", req.TxHash.Hex())
+			delete(slashRequests, id)
+			continue
+		}
+
+		slog.WarnContext(ctx, "Slash transaction reverted, will retry", "id", id, "chainID", req.ChainID, "tx", req.TxHash.Hex())
+		req.TxHash = nil
+	}
+
+	return firstErr
+}
+
+func slashRequestKey(chainID int64, log types.Log) string {
+	return fmt.Sprintf("%d-%s-%d", chainID, log.TxHash.Hex(), log.Index)
+}
+
 func signalContext(ctx context.Context) context.Context {
 	cnCtx, cancel := context.WithCancel(ctx)
 
@@ -390,4 +586,12 @@ func signalContext(ctx context.Context) context.Context {
 	}()
 
 	return cnCtx
+}
+
+func mustABIType(t string) abi.Type {
+	typ, err := abi.NewType(t, "", nil)
+	if err != nil {
+		panic(fmt.Sprintf("invalid ABI type %s: %v", t, err))
+	}
+	return typ
 }
