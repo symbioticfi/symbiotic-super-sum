@@ -2,6 +2,11 @@
 
 DRIVER_ADDRESS=0x43C27243F96591892976FFf886511807B65a33d5
 
+HTTP_GATEWAY_LINE=""
+if [ "${API_HTTP_GATEWAY:-false}" = "true" ]; then
+  HTTP_GATEWAY_LINE="  http-gateway: true"
+fi
+
 cat > /tmp/sidecar.yaml << EOFCONFIG
 # Logging
 log:
@@ -11,6 +16,7 @@ log:
 # API Server Configuration
 api:
   listen: ":8080"
+$HTTP_GATEWAY_LINE
 
 # Metrics Configuration
 metrics:

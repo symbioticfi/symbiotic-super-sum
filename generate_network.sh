@@ -7,7 +7,7 @@
 set -e
 
 # Define the image tag for the relay service, that the current sum node is compatible with
-RELAY_IMAGE_TAG="0.3.0"
+RELAY_IMAGE_TAG="0.3.1-20251027073813-970b1bfc39c5"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -239,6 +239,11 @@ EOF
             exit 1
         fi
 
+        local api_http_env=""
+        if [ "$port" -eq "$relay_start_port" ]; then
+            api_http_env=$'    environment:\n      - API_HTTP_GATEWAY=true'
+        fi
+
         cat >> "$network_dir/docker-compose.yml" << EOF
 
   # Relay sidecar $i ($role_name)
@@ -251,6 +256,7 @@ EOF
       - /app/$storage_dir
     ports:
       - "$port:8080"
+${api_http_env}
     volumes:
       - ../:/workspace
       - ./$storage_dir:/app/$storage_dir
