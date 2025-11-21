@@ -147,6 +147,7 @@ cast decode-abi --json "data()(uint48,uint256)" $result
 ```
 
 ### Slash operator
+
 ```bash
 cast send --rpc-url http://127.0.0.1:8545  --private-key \
 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
@@ -155,12 +156,16 @@ cast send --rpc-url http://127.0.0.1:8545  --private-key \
 ```
 
 ### Check slashing
+
 ```bash
 docker compose --project-directory temp-network logs -f sum-node-1
 ```
+
 #### Expected output
+
 ```bash
-symbiotic-sum-node-1  | 2025/11/14 17:57:27 INFO Slash transaction confirmed id=31337-0xe58cf4e56aa71341da16ac6a07c4aa6182f0091ada306981d5623d4a49dc9bec-0 chainID=31337 tx=0x58aa20f9e81866d6b467b5d8e1dda40cadb0183d83a02801efa8a805fdfe5bc7
+2025/11/21 17:44:52 INFO Submitted slash transaction id=31337-0x64060269163ccc3e92067867bfa8040d76e52745911a5ecc479d02ff18ef7431-0 chainID=31337 tx=0x7ca3a5f4b4fb0edf21d01cd8d87e680cbf428e42f6382a7a9f6d060d2788e2fc operator=0x649c9C229E6eD6F2d48c0d4712674df40875BBDB
+2025/11/21 17:44:53 INFO Slash transaction confirmed id=31337-0x64060269163ccc3e92067867bfa8040d76e52745911a5ecc479d02ff18ef7431-0 chainID=31337 tx=0x7ca3a5f4b4fb0edf21d01cd8d87e680cbf428e42f6382a7a9f6d060d2788e2fc
 ```
 
 ### Troubleshooting

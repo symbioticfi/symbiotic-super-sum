@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import {BaseSlashing} from "@symbioticfi/relay-contracts/src/modules/voting-power/extensions/BaseSlashing.sol";
 import {
     EqualStakeVPCalc
 } from "@symbioticfi/relay-contracts/src/modules/voting-power/common/voting-power-calc/EqualStakeVPCalc.sol";
+import {ISlasher} from "@symbioticfi/core/src/interfaces/slasher/ISlasher.sol";
+import {IVault} from "@symbioticfi/core/src/interfaces/vault/IVault.sol";
 import {
     OpNetVaultAutoDeploy
 } from "@symbioticfi/relay-contracts/src/modules/voting-power/extensions/OpNetVaultAutoDeploy.sol";
 import {OzOwnable} from "@symbioticfi/relay-contracts/src/modules/common/permissions/OzOwnable.sol";
 import {VotingPowerProvider} from "@symbioticfi/relay-contracts/src/modules/voting-power/VotingPowerProvider.sol";
-import {ISlasher} from "@symbioticfi/core/src/interfaces/slasher/ISlasher.sol";
-import {IVault} from "@symbioticfi/core/src/interfaces/vault/IVault.sol";
 
-contract VotingPowers is VotingPowerProvider, OzOwnable, EqualStakeVPCalc, OpNetVaultAutoDeploy {
+contract VotingPowers is BaseSlashing, OzOwnable, EqualStakeVPCalc, OpNetVaultAutoDeploy {
     constructor(address operatorRegistry, address vaultFactory, address vaultConfigurator)
         VotingPowerProvider(operatorRegistry, vaultFactory)
         OpNetVaultAutoDeploy(vaultConfigurator)
@@ -21,19 +22,14 @@ contract VotingPowers is VotingPowerProvider, OzOwnable, EqualStakeVPCalc, OpNet
     function initialize(
         VotingPowerProviderInitParams memory votingPowerProviderInitParams,
         OpNetVaultAutoDeployInitParams memory opNetVaultAutoDeployInitParams,
-        OzOwnableInitParams memory ozOwnableInitParams
+        OzOwnableInitParams memory ozOwnableInitParams,
+        BaseSlashingInitParams memory baseSlashingInitParams
     ) public virtual initializer {
         __VotingPowerProvider_init(votingPowerProviderInitParams);
         __OpNetVaultAutoDeploy_init(opNetVaultAutoDeployInitParams);
         __OzOwnable_init(ozOwnableInitParams);
         __EqualStakeVPCalc_init();
-    }
-
-    function slash(address operator, uint256 amount, uint48 captureTimestamp) public {
-        address vault = getOperatorVaults(operator)[0];
-        address slasher = IVault(vault).slasher();
-
-        ISlasher(slasher).slash(SUBNETWORK(), operator, amount, captureTimestamp, new bytes(0));
+        __BaseSlashing_init(baseSlashingInitParams);
     }
 
     function _registerOperatorImpl(address operator) internal override(OpNetVaultAutoDeploy, VotingPowerProvider) {

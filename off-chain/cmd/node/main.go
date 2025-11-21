@@ -36,22 +36,21 @@ const (
 )
 
 type config struct {
-	relayApiURL        string
-	evmRpcURLs         []string
-	contractAddresses  []string
-	votingPowerAddress string
-	privateKey         string
-	logLevel           string
+	relayApiURL       string
+	evmRpcURLs        []string
+	contractAddresses []string
+	privateKey        string
+	logLevel          string
 }
 
 var relayClient *v1.SymbioticClient
 var evmClients map[int64]*ethclient.Client
 var sumContracts map[int64]*contracts.SumTask
-var votingPowerContracts map[int64]*contracts.VotingPowers
 var sumContractAddresses map[int64]common.Address
 var lastBlocks map[int64]uint64
 var slashRequests map[string]*SlashRequest
 var nodePrivateKey *ecdsa.PrivateKey
+var mainChainID int64
 
 func main() {
 	slog.Info("Running sum task off-chain client", "args", os.Args)
@@ -67,7 +66,6 @@ func run() error {
 	rootCmd.PersistentFlags().StringVarP(&cfg.relayApiURL, "relay-api-url", "r", "", "Relay API URL")
 	rootCmd.PersistentFlags().StringSliceVarP(&cfg.evmRpcURLs, "evm-rpc-urls", "e", []string{}, "EVM RPC URLs separated by comma (e.g., 'https://mainnet.infura.io/v3/,...')")
 	rootCmd.PersistentFlags().StringSliceVarP(&cfg.contractAddresses, "contract-addresses", "a", []string{}, "SumTask contracts' addresses corresponding to the RPC URLs separated by comma (e.g., '0x4826533B4897376654Bb4d4AD88B7faFD0C98528,...')")
-	rootCmd.PersistentFlags().StringVarP(&cfg.votingPowerAddress, "voting-power-address", "v", "", "VotingPowers contract address used on all chains.")
 	rootCmd.PersistentFlags().StringVarP(&cfg.privateKey, "private-key", "p", "", "Task response private key")
 	rootCmd.PersistentFlags().StringVarP(&cfg.logLevel, "log-level", "l", "info", "Log level")
 
@@ -79,9 +77,6 @@ func run() error {
 	}
 	if err := rootCmd.MarkPersistentFlagRequired("contract-addresses"); err != nil {
 		return errors.Errorf("failed to mark contract-addresses as required: %w", err)
-	}
-	if err := rootCmd.MarkPersistentFlagRequired("voting-power-address"); err != nil {
-		return errors.Errorf("failed to mark voting-power-address as required: %w", err)
 	}
 	if err := rootCmd.MarkPersistentFlagRequired("private-key"); err != nil {
 		return errors.Errorf("failed to mark private-key as required: %w", err)
@@ -108,6 +103,9 @@ type SlashRequest struct {
 	Operator         common.Address
 	Amount           *big.Int
 	CaptureTimestamp *big.Int
+	SigEpoch         int64
+	SigRequestID     string
+	AggProof         []byte
 	TxHash           *common.Hash
 }
 
@@ -115,6 +113,11 @@ var tasks map[common.Hash]TaskState
 var (
 	slashEventSignature = crypto.Keccak256Hash([]byte("Slash(address,uint256,uint48)"))
 	slashEventArguments = abi.Arguments{
+		{Type: mustABIType("uint256")},
+		{Type: mustABIType("uint48")},
+	}
+	slashMessageArguments = abi.Arguments{
+		{Type: mustABIType("address")},
 		{Type: mustABIType("uint256")},
 		{Type: mustABIType("uint48")},
 	}
@@ -154,16 +157,12 @@ var rootCmd = &cobra.Command{
 		if len(cfg.contractAddresses) != len(cfg.evmRpcURLs) {
 			return errors.Errorf("mismatched lengths: evm-rpc-urls=%d, contract-addresses=%d", len(cfg.evmRpcURLs), len(cfg.contractAddresses))
 		}
-		if cfg.votingPowerAddress == "" {
-			return errors.Errorf("no voting power address provided")
-		}
 		nodePrivateKey, err = crypto.HexToECDSA(cfg.privateKey)
 		if err != nil {
 			return errors.Errorf("failed to parse private key: %w", err)
 		}
 		evmClients = make(map[int64]*ethclient.Client)
 		sumContracts = make(map[int64]*contracts.SumTask)
-		votingPowerContracts = make(map[int64]*contracts.VotingPowers)
 		sumContractAddresses = make(map[int64]common.Address)
 		tasks = make(map[common.Hash]TaskState)
 		slashRequests = make(map[string]*SlashRequest)
@@ -172,12 +171,16 @@ var rootCmd = &cobra.Command{
 		for i, evmRpcURL := range cfg.evmRpcURLs {
 			evmClient, err := ethclient.DialContext(ctx, evmRpcURL)
 			if err != nil {
-				         return errors.Errorf("failed to connect to RPC URL '%s': %w", evmRpcURL, err)
+				return errors.Errorf("failed to connect to RPC URL '%s': %w", evmRpcURL, err)
 			}
 
 			chainID, err := evmClient.ChainID(ctx)
 			if err != nil {
 				return errors.Errorf("failed to get chain ID from RPC URL '%s': %w", evmRpcURL, err)
+			}
+
+			if i == 0 {
+				mainChainID = chainID.Int64()
 			}
 
 			addr := common.HexToAddress(cfg.contractAddresses[i])
@@ -189,13 +192,6 @@ var rootCmd = &cobra.Command{
 			evmClients[chainID.Int64()] = evmClient
 			sumContracts[chainID.Int64()] = sumContract
 			sumContractAddresses[chainID.Int64()] = addr
-
-			votingPowerAddr := common.HexToAddress(cfg.votingPowerAddress)
-			votingPowerContract, err := contracts.NewVotingPowers(votingPowerAddr, evmClient)
-			if err != nil {
-				return errors.Errorf("failed to create voting powers contract for %s on chain %d: %w", votingPowerAddr.Hex(), chainID, err)
-			}
-			votingPowerContracts[chainID.Int64()] = votingPowerContract
 
 			finalizedBlockNumber, err := getFinalizedBlockNumber(ctx, evmClient)
 			if err != nil {
@@ -506,12 +502,33 @@ func processSlashSubmissions(ctx context.Context) error {
 	if nodePrivateKey == nil {
 		return errors.Errorf("node private key is not initialized")
 	}
+	if mainChainID == 0 {
+		return errors.Errorf("main chain ID is not initialized")
+	}
 
 	var firstErr error
 
 	for id, req := range slashRequests {
+		if req.AggProof == nil {
+			err := requestSlashSignature(ctx, req)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to request slash signature", "id", id, "chainID", req.ChainID, "error", err)
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			err = fetchSlashAggregationProof(ctx, req)
+			if err != nil {
+				slog.DebugContext(ctx, "Aggregation proof not ready yet", "id", id, "chainID", req.ChainID, "error", err)
+			}
+			if req.AggProof == nil {
+				continue
+			}
+		}
+
 		if req.TxHash == nil {
-			txOpts, err := bind.NewKeyedTransactorWithChainID(nodePrivateKey, big.NewInt(req.ChainID))
+			txOpts, err := bind.NewKeyedTransactorWithChainID(nodePrivateKey, big.NewInt(mainChainID))
 			if err != nil {
 				if firstErr == nil {
 					firstErr = errors.Errorf("failed to create slash transactor: %w", err)
@@ -520,18 +537,20 @@ func processSlashSubmissions(ctx context.Context) error {
 			}
 			txOpts.Context = ctx
 
-			contract, ok := votingPowerContracts[req.ChainID]
+			contract, ok := sumContracts[mainChainID]
 			if !ok {
-				err = errors.Errorf("voting powers contract missing for chain %d", req.ChainID)
+				err = errors.Errorf("sum contract missing for chain %d", mainChainID)
 				if firstErr == nil {
 					firstErr = err
 				}
 				continue
 			}
 
-			tx, err := contract.Slash(txOpts, req.Operator, req.Amount, req.CaptureTimestamp)
+			raw := &contracts.SumTaskRaw{Contract: contract}
+
+			tx, err := raw.Transact(txOpts, "processSlash", req.Operator, req.Amount, req.CaptureTimestamp, big.NewInt(req.SigEpoch), req.AggProof)
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to submit slash transaction", "id", id, "chainID", req.ChainID, "error", err)
+				slog.ErrorContext(ctx, "Failed to submit slash transaction", "id", id, "sourceChainID", req.ChainID, "targetChainID", mainChainID, "error", err)
 				if firstErr == nil {
 					firstErr = err
 				}
@@ -540,16 +559,16 @@ func processSlashSubmissions(ctx context.Context) error {
 
 			hash := tx.Hash()
 			req.TxHash = &hash
-			slog.InfoContext(ctx, "Submitted slash transaction", "id", id, "chainID", req.ChainID, "tx", hash.Hex(), "operator", req.Operator.Hex())
+			slog.InfoContext(ctx, "Submitted slash transaction", "id", id, "sourceChainID", req.ChainID, "targetChainID", mainChainID, "tx", hash.Hex(), "operator", req.Operator.Hex())
 			continue
 		}
 
-		receipt, err := evmClients[req.ChainID].TransactionReceipt(ctx, *req.TxHash)
+		receipt, err := evmClients[mainChainID].TransactionReceipt(ctx, *req.TxHash)
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
 				continue
 			}
-			slog.ErrorContext(ctx, "Failed to fetch slash transaction receipt", "id", id, "chainID", req.ChainID, "tx", req.TxHash.Hex(), "error", err)
+			slog.ErrorContext(ctx, "Failed to fetch slash transaction receipt", "id", id, "sourceChainID", req.ChainID, "targetChainID", mainChainID, "tx", req.TxHash.Hex(), "error", err)
 			if firstErr == nil {
 				firstErr = err
 			}
@@ -557,12 +576,12 @@ func processSlashSubmissions(ctx context.Context) error {
 		}
 
 		if receipt.Status == types.ReceiptStatusSuccessful {
-			slog.InfoContext(ctx, "Slash transaction confirmed", "id", id, "chainID", req.ChainID, "tx", req.TxHash.Hex())
+			slog.InfoContext(ctx, "Slash transaction confirmed", "id", id, "sourceChainID", req.ChainID, "targetChainID", mainChainID, "tx", req.TxHash.Hex())
 			delete(slashRequests, id)
 			continue
 		}
 
-		slog.WarnContext(ctx, "Slash transaction reverted, will retry", "id", id, "chainID", req.ChainID, "tx", req.TxHash.Hex())
+		slog.WarnContext(ctx, "Slash transaction reverted, will retry", "id", id, "sourceChainID", req.ChainID, "targetChainID", mainChainID, "tx", req.TxHash.Hex())
 		req.TxHash = nil
 	}
 
@@ -571,6 +590,77 @@ func processSlashSubmissions(ctx context.Context) error {
 
 func slashRequestKey(chainID int64, log types.Log) string {
 	return fmt.Sprintf("%d-%s-%d", chainID, log.TxHash.Hex(), log.Index)
+}
+
+func getSuggestedEpoch(ctx context.Context) (uint64, error) {
+	suggestedEpoch := uint64(0)
+	epochInfos, err := relayClient.GetLastAllCommitted(ctx, &v1.GetLastAllCommittedRequest{})
+	if err != nil {
+		return 0, err
+	}
+
+	for _, info := range epochInfos.EpochInfos {
+		if suggestedEpoch == 0 || info.GetLastCommittedEpoch() < suggestedEpoch {
+			suggestedEpoch = info.GetLastCommittedEpoch()
+		}
+	}
+
+	return suggestedEpoch, nil
+}
+
+func buildSlashMessage(operator common.Address, amount *big.Int, captureTimestamp *big.Int) ([]byte, error) {
+	return slashMessageArguments.Pack(operator, amount, captureTimestamp)
+}
+
+func requestSlashSignature(ctx context.Context, req *SlashRequest) error {
+	if req.SigRequestID != "" {
+		return nil
+	}
+
+	msg, err := buildSlashMessage(req.Operator, req.Amount, req.CaptureTimestamp)
+	if err != nil {
+		return err
+	}
+
+	suggestedEpoch, err := getSuggestedEpoch(ctx)
+	if err != nil {
+		return err
+	}
+
+	resp, err := relayClient.SignMessage(ctx, &v1.SignMessageRequest{
+		KeyTag:        15,
+		Message:       msg,
+		RequiredEpoch: &suggestedEpoch,
+	})
+	if err != nil {
+		return err
+	}
+
+	req.SigRequestID = resp.RequestId
+	req.SigEpoch = int64(resp.Epoch)
+
+	slog.InfoContext(ctx, "Slash request signed", "id", req.ID, "chainID", req.ChainID, "epoch", req.SigEpoch, "requestID", req.SigRequestID)
+
+	return nil
+}
+
+func fetchSlashAggregationProof(ctx context.Context, req *SlashRequest) error {
+	if req.SigRequestID == "" || req.AggProof != nil {
+		return nil
+	}
+
+	resp, err := relayClient.GetAggregationProof(ctx, &v1.GetAggregationProofRequest{
+		RequestId: req.SigRequestID,
+	})
+	if err != nil {
+		return err
+	}
+
+	req.AggProof = resp.AggregationProof.Proof
+
+	slog.InfoContext(ctx, "Got aggregation proof for slash", "id", req.ID, "chainID", req.ChainID, "proof", hexutil.Encode(req.AggProof))
+
+	return nil
 }
 
 func signalContext(ctx context.Context) context.Context {
