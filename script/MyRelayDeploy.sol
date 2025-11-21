@@ -40,6 +40,9 @@ import {
 import {IValSetDriver} from "@symbioticfi/relay-contracts/src/interfaces/modules/valset-driver/IValSetDriver.sol";
 import {IEpochManager} from "@symbioticfi/relay-contracts/src/interfaces/modules/valset-driver/IEpochManager.sol";
 import {ISettlement} from "@symbioticfi/relay-contracts/src/interfaces/modules/settlement/ISettlement.sol";
+import {
+    IBaseSlashing
+} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/extensions/IBaseSlashing.sol";
 
 import {Network, INetwork} from "@symbioticfi/network/src/Network.sol";
 
@@ -59,6 +62,7 @@ contract MyRelayDeploy is RelayDeploy {
     using KeyBlsBn254 for KeyBlsBn254.KEY_BLS_BN254;
 
     bytes32 internal constant KEY_OWNERSHIP_TYPEHASH = keccak256("KeyOwnership(address operator,bytes key)");
+    address internal constant VOTING_POWER_PROVIDER_ADDRESS = 0x369c72C823A4Fc8d2A3A5C3B15082fb34A342878;
 
     // Configurable constants
     uint48 internal immutable EPOCH_DURATION = uint48(vm.envOr("EPOCH_TIME", uint256(60)));
@@ -164,7 +168,7 @@ contract MyRelayDeploy is RelayDeploy {
                         network: getNetwork(), subnetworkId: 0
                     }),
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "VotingPowers", version: "1"}),
-                    requireSlasher: false,
+                    requireSlasher: true,
                     minVaultEpochDuration: SLASHING_WINDOW,
                     token: getStakingToken()
                 }),
@@ -173,13 +177,14 @@ contract MyRelayDeploy is RelayDeploy {
                     config: IOpNetVaultAutoDeploy.AutoDeployConfig({
                         epochDuration: SLASHING_WINDOW,
                         collateral: getStakingToken(),
-                        burner: address(0),
+                        burner: address(0x000000000000000000000000000000000000dEaD),
                         withSlasher: true,
                         isBurnerHook: false
                     }),
                     isSetMaxNetworkLimitHookEnabled: true
                 }),
-                IOzOwnable.OzOwnableInitParams({owner: getDeployerAddress()})
+                IOzOwnable.OzOwnableInitParams({owner: getDeployerAddress()}),
+                IBaseSlashing.BaseSlashingInitParams({slasher: 0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF}) // sum task address
             )
         );
     }
@@ -309,8 +314,12 @@ contract MyRelayDeploy is RelayDeploy {
         address settlement =
             deploySettlement({proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: SETTLEMENT_SALT});
         vm.broadcast();
-        address sumTask =
-            deployCreate3(bytes32(SUM_TASK_SALT), abi.encodePacked(type(SumTask).creationCode, abi.encode(settlement)));
+        address sumTask = deployCreate3(
+            bytes32(SUM_TASK_SALT),
+            abi.encodePacked(
+                type(SumTask).creationCode, abi.encode(settlement, VOTING_POWER_PROVIDER_ADDRESS, getDeployerAddress())
+            )
+        );
         config.set("sum_task", sumTask);
 
         fundOperators();

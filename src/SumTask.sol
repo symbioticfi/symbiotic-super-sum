@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {ISettlement} from "@symbioticfi/relay-contracts/src/interfaces/modules/settlement/ISettlement.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SumTask {
+import {
+    IBaseSlashing
+} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/extensions/IBaseSlashing.sol";
+import {ISettlement} from "@symbioticfi/relay-contracts/src/interfaces/modules/settlement/ISettlement.sol";
+import {
+    IVotingPowerProvider
+} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/IVotingPowerProvider.sol";
+
+contract SumTask is Ownable {
     error AlreadyResponded();
     error InvalidQuorumSignature();
     error InvalidVerifyingEpoch();
@@ -31,9 +39,12 @@ contract SumTask {
 
     event RespondTask(bytes32 indexed taskId, Response response);
 
+    event Slash(address indexed operator, uint256 amount, uint48 captureTimestamp);
+
     uint32 public constant TASK_EXPIRY = 12_000;
 
     ISettlement public settlement;
+    address public votingPowers;
 
     uint256 public nonce;
 
@@ -41,8 +52,9 @@ contract SumTask {
 
     mapping(bytes32 => Response) public responses;
 
-    constructor(address _settlement) {
+    constructor(address _settlement, address _votingPowers, address _owner) Ownable(_owner) {
         settlement = ISettlement(_settlement);
+        votingPowers = _votingPowers;
     }
 
     function getTaskStatus(bytes32 taskId) public view returns (TaskStatus) {
@@ -98,5 +110,28 @@ contract SumTask {
         responses[taskId] = response;
 
         emit RespondTask(taskId, response);
+    }
+
+    function slash(address operator, uint256 amount, uint48 captureTimestamp) public onlyOwner {
+        emit Slash(operator, amount, captureTimestamp);
+    }
+
+    function processSlash(address operator, uint256 amount, uint48 captureTimestamp, uint48 epoch, bytes calldata proof)
+        public
+    {
+        // verify the quorum signature
+        if (!settlement.verifyQuorumSigAt(
+                abi.encode(keccak256(abi.encode(operator, amount, captureTimestamp))),
+                settlement.getRequiredKeyTagFromValSetHeaderAt(epoch),
+                settlement.getQuorumThresholdFromValSetHeaderAt(epoch),
+                proof,
+                epoch,
+                new bytes(0)
+            )) {
+            revert InvalidQuorumSignature();
+        }
+
+        address vault = IVotingPowerProvider(votingPowers).getOperatorVaults(operator)[0];
+        IBaseSlashing(votingPowers).slashVault(captureTimestamp, vault, operator, amount, new bytes(0));
     }
 }

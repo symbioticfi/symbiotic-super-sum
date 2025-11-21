@@ -146,6 +146,28 @@ result=$(cast call --rpc-url http://127.0.0.1:8546 \
 cast decode-abi --json "data()(uint48,uint256)" $result
 ```
 
+### Slash operator
+
+```bash
+cast send --rpc-url http://127.0.0.1:8545  --private-key \
+0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+0xDf12251aD82BF1eb0E0951AD15d37AE5ED3Ac1dF "slash(address,uint256,uint48)" \
+0x649c9C229E6eD6F2d48c0d4712674df40875BBDB 1000 1754051880 \
+```
+
+### Check slashing
+
+```bash
+docker compose --project-directory temp-network logs -f sum-node-1
+```
+
+#### Expected output
+
+```bash
+2025/11/21 17:44:52 INFO Submitted slash transaction id=31337-0x64060269163ccc3e92067867bfa8040d76e52745911a5ecc479d02ff18ef7431-0 chainID=31337 tx=0x7ca3a5f4b4fb0edf21d01cd8d87e680cbf428e42f6382a7a9f6d060d2788e2fc operator=0x649c9C229E6eD6F2d48c0d4712674df40875BBDB
+2025/11/21 17:44:53 INFO Slash transaction confirmed id=31337-0x64060269163ccc3e92067867bfa8040d76e52745911a5ecc479d02ff18ef7431-0 chainID=31337 tx=0x7ca3a5f4b4fb0edf21d01cd8d87e680cbf428e42f6382a7a9f6d060d2788e2fc
+```
+
 ### Troubleshooting
 
 1. **Services not starting**: Check logs with `docker compose --project-directory temp-network logs [service-name]`
