@@ -116,13 +116,9 @@ contract SumTask is Ownable {
         emit Slash(operator, amount, captureTimestamp);
     }
 
-    function processSlash(
-        address operator,
-        uint256 amount,
-        uint48 captureTimestamp,
-        uint48 epoch,
-        bytes calldata proof
-    ) public {
+    function processSlash(address operator, uint256 amount, uint48 captureTimestamp, uint48 epoch, bytes calldata proof)
+        public
+    {
         // verify the quorum signature
         if (!settlement.verifyQuorumSigAt(
                 abi.encode(keccak256(abi.encode(operator, amount, captureTimestamp))),
