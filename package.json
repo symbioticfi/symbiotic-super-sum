@@ -27,7 +27,7 @@
         "@openzeppelin/contracts": "5.4.0",
         "@openzeppelin/contracts-upgradeable": "5.4.0",
         "@symbioticfi/core": "1.0.3",
-        "@symbioticfi/relay-contracts": "^1.0.0-rc.1",
+        "@symbioticfi/relay-contracts": "^1.0.0-rc.3",
         "@symbioticfi/network": "1.0.0-rc.1"
     }
 }
