@@ -75,6 +75,7 @@ contract MyRelayDeploy is RelayDeploy {
     uint8 internal immutable VERIFICATION_TYPE = uint8(vm.envOr("VERIFICATION_TYPE", uint256(1)));
     uint208 internal immutable NUM_AGGREGATORS = uint208(vm.envOr("NUM_AGGREGATORS", uint256(1)));
     uint208 internal immutable NUM_COMMITTERS = uint208(vm.envOr("NUM_COMMITTERS", uint256(1)));
+    uint48 internal immutable COMMITTER_SLOT_DURATION = uint48(vm.envOr("COMMITTER_SLOT_DURATION", uint256(10)));
 
     // CREATE3 salts
     bytes11 public constant NETWORK_SALT = bytes11("Network");
@@ -247,6 +248,7 @@ contract MyRelayDeploy is RelayDeploy {
                     }),
                     numAggregators: NUM_AGGREGATORS,
                     numCommitters: NUM_COMMITTERS,
+                    committerSlotDuration: COMMITTER_SLOT_DURATION,
                     votingPowerProviders: getVotingPowerProviders(),
                     keysProvider: getKeyRegistry(),
                     settlements: getSettlements(),
