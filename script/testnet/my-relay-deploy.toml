@@ -1,36 +1,19 @@
-[10]
-endpoint_url = "https://optimism-rpc.publicnode.com"
-
-[10.address]
-settlement = "0x8882C097267F7F22e215D7F07Ec524B6A1175b12"
-sum_task = "0x1f9538AEC5Df5F3590058e029CBac956D4A12e08"
-
-[42161]
-endpoint_url = "https://arbitrum-one-rpc.publicnode.com"
-
-[42161.address]
-settlement = "0x8882C097267F7F22e215D7F07Ec524B6A1175b12"
-sum_task = "0x1f9538AEC5Df5F3590058e029CBac956D4A12e08"
+[421614]
+endpoint_url = "https://arbitrum-sepolia-rpc.publicnode.com"
 
 [560048]
 endpoint_url = "https://0xrpc.io/hoodi"
 
-[560048.address]
-key_registry = "0xfBB64e4e59CC0339c4345168906E37fF39228712"
-network = "0x6b09d56649f2253550ACa016416176a1c3181A42"
-staking_token = "0x8bc543D5906682406720ff62b18dDCa154553fEB"
-voting_power_provider = "0x00ebc9F68F3aca73CbFaae126E00853B36773676"
-settlement = "0x8882C097267F7F22e215D7F07Ec524B6A1175b12"
-sum_task = "0x1f9538AEC5Df5F3590058e029CBac956D4A12e08"
-val_set_driver = "0x64DdBfa87945D4E5583d9c20B97f0675d01067e0"
+[11155420]
+endpoint_url = "https://sepolia.optimism.io"
 
 [1234567890]
 endpoint_url = ""
 keyRegistry = 560048
 votingPowerProvider = [560048]
 settlement = [
-    10,
-    42161,
+    421614,
+    11155420,
     560048,
 ]
 valSetDriver = 560048
