@@ -1,11 +1,28 @@
 [421614]
 endpoint_url = "https://arbitrum-sepolia-rpc.publicnode.com"
 
+[421614.address]
+settlement = "0xB7ce04Bb26154CdA1Cdd3cdAE7401CDd0cC4e906"
+sum_task = "0x4C6763C86FD5Bc1d6FBf418dE72d9bc709e12D91"
+
 [560048]
 endpoint_url = "https://0xrpc.io/hoodi"
 
+[560048.address]
+key_registry = "0x0Ba51a74f938049E88357F36fE49127266d9B510"
+network = "0xeabcbc494c84870cCA333FFC4D45f01Bf734ee83"
+staking_token = "0x7D9C449a9acbFCdc877b2039D2E2c5578Ce54100"
+voting_power_provider = "0x7cFD2AD7eA40Deba069768558Ab030Db340a0115"
+settlement = "0xB7ce04Bb26154CdA1Cdd3cdAE7401CDd0cC4e906"
+sum_task = "0x4C6763C86FD5Bc1d6FBf418dE72d9bc709e12D91"
+val_set_driver = "0x308C7Ea001a3610C4F6cAEE4A7c9aEb8283DEA53"
+
 [11155420]
 endpoint_url = "https://sepolia.optimism.io"
+
+[11155420.address]
+settlement = "0xB7ce04Bb26154CdA1Cdd3cdAE7401CDd0cC4e906"
+sum_task = "0x4C6763C86FD5Bc1d6FBf418dE72d9bc709e12D91"
 
 [1234567890]
 endpoint_url = ""

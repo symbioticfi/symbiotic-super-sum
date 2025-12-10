@@ -49,6 +49,8 @@ import {INetworkMiddlewareService} from "@symbioticfi/core/src/interfaces/servic
 import {Logs} from "@symbioticfi/core/script/utils/Logs.sol";
 import {SymbioticCoreConstants} from "@symbioticfi/core/test/integration/SymbioticCoreConstants.sol";
 
+// ./node_modules/@symbioticfi/relay-contracts/script/relay-deploy.sh script/testnet/MyRelayDeploy.sol script/testnet/my-relay-deploy.toml --broadcast -vvvvv --slow
+
 contract MyRelayDeploy is RelayDeploy {
     using KeyTags for uint8;
     using KeyBlsBn254 for BN254.G1Point;
@@ -78,14 +80,14 @@ contract MyRelayDeploy is RelayDeploy {
     uint48 internal immutable COMMITTER_SLOT_DURATION = 10;
 
     // CREATE3 salts
-    bytes11 public constant NETWORK_SALT = bytes11("Network");
-    bytes11 public constant SUM_TASK_SALT = bytes11("SumTask");
-    bytes11 public constant KEY_REGISTRY_SALT = bytes11("KeyRegistry");
-    bytes11 public constant VOTING_POWER_PROVIDER_SALT = bytes11("VPProvider");
-    bytes11 public constant SETTLEMENT_SALT = bytes11("Settlement");
-    bytes11 public constant VALSET_DRIVER_SALT = bytes11("VSDriver");
+    bytes11 public constant NETWORK_SALT = bytes11("Network4");
+    bytes11 public constant SUM_TASK_SALT = bytes11("SumTask4");
+    bytes11 public constant KEY_REGISTRY_SALT = bytes11("KeyRegistr4");
+    bytes11 public constant VOTING_POWER_PROVIDER_SALT = bytes11("VPProvider4");
+    bytes11 public constant SETTLEMENT_SALT = bytes11("Settlement4");
+    bytes11 public constant VALSET_DRIVER_SALT = bytes11("VSDriver4");
 
-    address public constant NETWORK = 0x6b09d56649f2253550ACa016416176a1c3181A42;
+    address public constant NETWORK = 0xeabcbc494c84870cCA333FFC4D45f01Bf734ee83;
 
     constructor() RelayDeploy("./script/testnet/my-relay-deploy.toml") {}
 
@@ -323,7 +325,6 @@ contract MyRelayDeploy is RelayDeploy {
 
     function runDeployValSetDriver() public override {
         deployValSetDriver({proxyOwner: getDeployerAddress(), isDeployerGuarded: true, salt: VALSET_DRIVER_SALT});
-        vm.writeJson("", "temp-network/deploy-data/deployment-completed.json");
     }
 
     function configureOperatorKeys(uint256 index) public {
