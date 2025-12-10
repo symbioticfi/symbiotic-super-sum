@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -10,13 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"sum/internal/utils"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rpc"
 	v1 "github.com/symbioticfi/relay/api/client/v1"
 
 	"sum/internal/contracts"
@@ -132,6 +134,8 @@ var rootCmd = &cobra.Command{
 		evmClients = make(map[int64]*ethclient.Client)
 		sumContracts = make(map[int64]*contracts.SumTask)
 		tasks = make(map[common.Hash]TaskState)
+		lastBlocks = make(map[int64]uint64)
+
 		for i, evmRpcURL := range cfg.evmRpcURLs {
 			evmClient, err := ethclient.DialContext(ctx, evmRpcURL)
 			if err != nil {
@@ -151,24 +155,34 @@ var rootCmd = &cobra.Command{
 
 			evmClients[chainID.Int64()] = evmClient
 			sumContracts[chainID.Int64()] = sumContract
+
+			finalizedBlockNumber, err := getFinalizedBlockNumber(ctx, evmClient)
+			if err != nil {
+				return errors.Errorf("failed to get finalized block number for chain %d: %w", chainID, err)
+			}
+			lastBlocks[chainID.Int64()] = finalizedBlockNumber
+
+			slog.InfoContext(ctx, "Initialized chain", "chainID", chainID, "finalizedBlock", finalizedBlockNumber, "startBlock", lastBlocks[chainID.Int64()])
 		}
 
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
-		lastBlocks = make(map[int64]uint64)
-
 		for {
 			select {
 			case <-ticker.C:
 				for chainID, evmClient := range evmClients {
-					endBlock, err := evmClient.BlockByNumber(ctx, new(big.Int).SetInt64(rpc.FinalizedBlockNumber.Int64()))
+					endBlockNumber, err := getFinalizedBlockNumber(ctx, evmClient)
 					if err != nil {
-						return errors.Errorf("failed to get finalized block number: %w", err)
+						return errors.Errorf("failed to get finalized block number for chain %d: %w", chainID, err)
 					}
-					endBlockNumber := endBlock.NumberU64()
 
 					lastBlock := lastBlocks[chainID]
+
+					if endBlockNumber < lastBlock {
+						slog.DebugContext(ctx, "Finalized block number is behind last processed block, skipping", "chainID", chainID, "finalizedBlock", endBlockNumber, "lastProcessedBlock", lastBlock)
+						continue
+					}
 
 					slog.DebugContext(ctx, "Fetching events", "chainID", chainID, "fromBlock", lastBlock, "toBlock", endBlockNumber)
 
@@ -197,6 +211,21 @@ var rootCmd = &cobra.Command{
 			}
 		}
 	},
+}
+
+func getFinalizedBlockNumber(ctx context.Context, evmClient *ethclient.Client) (uint64, error) {
+	// Get finalized block and set starting point to 24 hours ago
+	var raw json.RawMessage
+	err := evmClient.Client().CallContext(ctx, &raw, "eth_getBlockByNumber", "finalized", true)
+	if err != nil {
+		return 0, errors.Errorf("failed to get finalized block number: %w", err)
+	}
+	var head *types.Header
+	if err := json.Unmarshal(raw, &head); err != nil {
+		return 0, errors.Errorf("failed to unmarshal finalized block: %w", err)
+	}
+
+	return head.Number.Uint64(), nil
 }
 
 func fetchResults(ctx context.Context) error {

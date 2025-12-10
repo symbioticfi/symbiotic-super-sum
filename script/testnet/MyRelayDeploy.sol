@@ -75,6 +75,7 @@ contract MyRelayDeploy is RelayDeploy {
     uint8 internal immutable VERIFICATION_TYPE = 1;
     uint208 internal immutable NUM_AGGREGATORS = 2;
     uint208 internal immutable NUM_COMMITTERS = 2;
+    uint48 internal immutable COMMITTER_SLOT_DURATION = 10;
 
     // CREATE3 salts
     bytes11 public constant NETWORK_SALT = bytes11("Network");
@@ -249,6 +250,7 @@ contract MyRelayDeploy is RelayDeploy {
                     }),
                     numAggregators: NUM_AGGREGATORS,
                     numCommitters: NUM_COMMITTERS,
+                    committerSlotDuration: COMMITTER_SLOT_DURATION,
                     votingPowerProviders: getVotingPowerProviders(),
                     keysProvider: getKeyRegistry(),
                     settlements: getSettlements(),
