@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 
 	"sum/internal/utils"
 
@@ -35,6 +37,9 @@ const (
 	TaskResponded
 	TaskExpired
 	TaskNotFound
+
+	SumTaskSeed         = "sum-task"
+	SlotDurationSeconds = 10
 )
 
 type config struct {
@@ -229,7 +234,9 @@ func getFinalizedBlockNumber(ctx context.Context, evmClient *ethclient.Client) (
 }
 
 func fetchResults(ctx context.Context) error {
+	var schedule *v1.GetCustomScheduleNodeStatusResponse
 	for taskID, state := range tasks {
+		needProcessing := false
 		for chainID := range sumContracts {
 			if state.Statuses[chainID] == TaskResponded {
 				continue
@@ -241,19 +248,12 @@ func fetchResults(ctx context.Context) error {
 				return err
 			}
 			state.Statuses[chainID] = status
+			if status == TaskCreated {
+				needProcessing = true
+			}
 		}
 		slog.InfoContext(ctx, "Task statuses", "taskID", taskID.Hex(), "statuses", state.Statuses)
-		allNotFoundOrExpired := true
-		allResponded := true
-		for _, status := range state.Statuses {
-			if status != TaskNotFound && status != TaskExpired {
-				allNotFoundOrExpired = false
-			}
-			if status != TaskResponded {
-				allResponded = false
-			}
-		}
-		if allNotFoundOrExpired || allResponded {
+		if !needProcessing {
 			delete(tasks, taskID)
 			continue
 		}
@@ -262,7 +262,9 @@ func fetchResults(ctx context.Context) error {
 				RequestId: state.SigRequestID,
 			})
 			if err != nil {
-				//		slog.InfoContext(ctx, "Failed to fetch aggregation proof", "err", err)
+				if grpcstatus.Code(err) != codes.NotFound {
+					slog.ErrorContext(ctx, "Failed to fetch aggregation proof for task, skipping", "err", err, "taskID", taskID.Hex())
+				}
 				continue
 			}
 			state.AggProof = resp.AggregationProof.Proof
@@ -270,9 +272,30 @@ func fetchResults(ctx context.Context) error {
 		}
 
 		tasks[taskID] = state
+		if schedule == nil || time.Now().After(schedule.CurrentSlotEndTime.AsTime()) {
+			// check schedule
+			epochInfos, err := relayClient.GetLastAllCommitted(ctx, &v1.GetLastAllCommittedRequest{})
+			if err != nil {
+				return err
+			}
+			schedule, err = relayClient.GetCustomScheduleNodeStatus(ctx, &v1.GetCustomScheduleNodeStatusRequest{
+				Epoch:               &epochInfos.SuggestedEpochInfo.LastCommittedEpoch,
+				Seed:                []byte(SumTaskSeed),
+				SlotDurationSeconds: SlotDurationSeconds,
+				// NOTE: for demo purposes we set both min and max participants to 1
+				MaxParticipantsPerSlot: 1,
+				MinParticipantsPerSlot: 1,
+			})
+			if err != nil {
+				return err
+			}
+		}
 
-		err := processProof(ctx, taskID)
-		if err != nil {
+		if !schedule.IsActive {
+			slog.InfoContext(ctx, "Not scheduled to respond in this epoch", "taskID", taskID.Hex())
+			continue
+		}
+		if err := processProof(ctx, taskID); err != nil {
 			fmt.Printf("Error processing proof: %v\n", err)
 		}
 	}
@@ -341,17 +364,11 @@ func processNewTasks(ctx context.Context, chainID int64, iter *contracts.SumTask
 
 		slog.InfoContext(ctx, "New task result to sign", "message", hexutil.Encode(msg))
 
-		suggestedEpoch := uint64(0)
 		epochInfos, err := relayClient.GetLastAllCommitted(ctx, &v1.GetLastAllCommittedRequest{})
 		if err != nil {
 			return err
-		} else {
-			for _, info := range epochInfos.EpochInfos {
-				if suggestedEpoch == 0 || info.GetLastCommittedEpoch() < suggestedEpoch {
-					suggestedEpoch = info.GetLastCommittedEpoch()
-				}
-			}
 		}
+		suggestedEpoch := epochInfos.SuggestedEpochInfo.LastCommittedEpoch
 
 		resp, err := relayClient.SignMessage(ctx, &v1.SignMessageRequest{
 			KeyTag:        15,
