@@ -10,33 +10,24 @@ import {Settlement} from "../src/symbiotic/Settlement.sol";
 import {SumTask} from "../src/SumTask.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {BN254G2} from "./utils/BN254G2.sol";
+import {BLS12381G2} from "./utils/BLS12381G2.sol";
 
 import {RelayDeploy} from "@symbioticfi/relay-contracts/script/RelayDeploy.sol";
 
 import {BN254} from "@symbioticfi/relay-contracts/src/libraries/utils/BN254.sol";
+import {BLS12381} from "@symbioticfi/relay-contracts/src/libraries/utils/BLS12381.sol";
 import {KeyTags} from "@symbioticfi/relay-contracts/src/libraries/utils/KeyTags.sol";
 import {KeyEcdsaSecp256k1} from "@symbioticfi/relay-contracts/src/libraries/keys/KeyEcdsaSecp256k1.sol";
 import {KeyBlsBn254} from "@symbioticfi/relay-contracts/src/libraries/keys/KeyBlsBn254.sol";
-import {
-    SigVerifierBlsBn254Simple
-} from "@symbioticfi/relay-contracts/src/modules/settlement/sig-verifiers/SigVerifierBlsBn254Simple.sol";
-import {
-    SigVerifierBlsBn254ZK
-} from "@symbioticfi/relay-contracts/src/modules/settlement/sig-verifiers/SigVerifierBlsBn254ZK.sol";
-import {
-    IVotingPowerProvider
-} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/IVotingPowerProvider.sol";
-import {
-    IOpNetVaultAutoDeploy
-} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/extensions/IOpNetVaultAutoDeploy.sol";
+import {KeyBlsBls12381} from "@symbioticfi/relay-contracts/src/libraries/keys/KeyBlsBls12381.sol";
+import {SigVerifierBlsBn254Simple} from "@symbioticfi/relay-contracts/src/modules/settlement/sig-verifiers/SigVerifierBlsBn254Simple.sol";
+import {SigVerifierBlsBn254ZK} from "@symbioticfi/relay-contracts/src/modules/settlement/sig-verifiers/SigVerifierBlsBn254ZK.sol";
+import {IVotingPowerProvider} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/IVotingPowerProvider.sol";
+import {IOpNetVaultAutoDeploy} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/extensions/IOpNetVaultAutoDeploy.sol";
 import {INetworkManager} from "@symbioticfi/relay-contracts/src/interfaces/modules/base/INetworkManager.sol";
 import {IOzEIP712} from "@symbioticfi/relay-contracts/src/interfaces/modules/base/IOzEIP712.sol";
 import {IOzOwnable} from "@symbioticfi/relay-contracts/src/interfaces/modules/common/permissions/IOzOwnable.sol";
-import {
-    IKeyRegistry,
-    KEY_TYPE_BLS_BN254,
-    KEY_TYPE_ECDSA_SECP256K1
-} from "@symbioticfi/relay-contracts/src/interfaces/modules/key-registry/IKeyRegistry.sol";
+import {IKeyRegistry, KEY_TYPE_BLS_BN254, KEY_TYPE_BLS_BLS12381, KEY_TYPE_ECDSA_SECP256K1} from "@symbioticfi/relay-contracts/src/interfaces/modules/key-registry/IKeyRegistry.sol";
 import {IValSetDriver} from "@symbioticfi/relay-contracts/src/interfaces/modules/valset-driver/IValSetDriver.sol";
 import {IEpochManager} from "@symbioticfi/relay-contracts/src/interfaces/modules/valset-driver/IEpochManager.sol";
 import {ISettlement} from "@symbioticfi/relay-contracts/src/interfaces/modules/settlement/ISettlement.sol";
@@ -52,11 +43,14 @@ import {SymbioticCoreConstants} from "@symbioticfi/core/test/integration/Symbiot
 contract MyRelayDeploy is RelayDeploy {
     using KeyTags for uint8;
     using KeyBlsBn254 for BN254.G1Point;
+    using KeyBlsBls12381 for BLS12381.G1Point;
     using KeyEcdsaSecp256k1 for address;
     using KeyEcdsaSecp256k1 for KeyEcdsaSecp256k1.KEY_ECDSA_SECP256K1;
     using KeyEcdsaSecp256k1 for bytes;
     using BN254 for BN254.G1Point;
+    using BLS12381 for BLS12381.G1Point;
     using KeyBlsBn254 for KeyBlsBn254.KEY_BLS_BN254;
+    using KeyBlsBls12381 for KeyBlsBls12381.KEY_BLS_BLS12381;
 
     bytes32 internal constant KEY_OWNERSHIP_TYPEHASH = keccak256("KeyOwnership(address operator,bytes key)");
 
@@ -71,6 +65,7 @@ contract MyRelayDeploy is RelayDeploy {
     uint256 internal constant OPERATOR_STAKE_AMOUNT = 100_000;
     uint8 internal constant REQUIRED_KEY_TAG_ECDSA = 16; // 16 is the default key tag for ecdsa keys (ECDSA-SECP256K1/0)
     uint8 internal constant REQUIRED_KEY_TAG_SECONDARY_BLS = 11;
+    uint8 internal constant REQUIRED_KEY_TAG_BLS12381 = 33; // 33 is the default key tag (BLS12-381/1)
     uint256 internal immutable OPERATOR_COUNT = vm.envOr("OPERATOR_COUNT", uint256(4));
     uint8 internal immutable VERIFICATION_TYPE = uint8(vm.envOr("VERIFICATION_TYPE", uint256(1)));
     uint208 internal immutable NUM_AGGREGATORS = uint208(vm.envOr("NUM_AGGREGATORS", uint256(1)));
@@ -88,7 +83,7 @@ contract MyRelayDeploy is RelayDeploy {
     constructor() RelayDeploy("./temp-network/my-relay-deploy.toml") {}
 
     function getDeployerAddress() internal returns (address deployer) {
-        (,, deployer) = vm.readCallers();
+        (, , deployer) = vm.readCallers();
     }
 
     function getStakingToken() internal returns (address) {
@@ -105,8 +100,9 @@ contract MyRelayDeploy is RelayDeploy {
             proposersAndExecutors[0] = getDeployerAddress();
             SymbioticCoreConstants.Core memory core = getCore();
             vm.broadcast();
-            address networkImpl =
-                address(new Network(address(core.networkRegistry), address(core.networkMiddlewareService)));
+            address networkImpl = address(
+                new Network(address(core.networkRegistry), address(core.networkMiddlewareService))
+            );
             config.set(
                 "network",
                 _deployContract(
@@ -114,7 +110,8 @@ contract MyRelayDeploy is RelayDeploy {
                     networkImpl,
                     abi.encodeCall(
                         INetwork.initialize,
-                        (INetwork.NetworkInitParams({
+                        (
+                            INetwork.NetworkInitParams({
                                 globalMinDelay: 0,
                                 delayParams: new INetwork.DelayParams[](0),
                                 proposers: proposersAndExecutors,
@@ -124,7 +121,8 @@ contract MyRelayDeploy is RelayDeploy {
                                 defaultAdminRoleHolder: getDeployerAddress(),
                                 nameUpdateRoleHolder: getDeployerAddress(),
                                 metadataURIUpdateRoleHolder: getDeployerAddress()
-                            }))
+                            })
+                        )
                     ),
                     getDeployerAddress(),
                     false
@@ -140,9 +138,11 @@ contract MyRelayDeploy is RelayDeploy {
 
         initData = abi.encodeCall(
             KeyRegistry.initialize,
-            (IKeyRegistry.KeyRegistryInitParams({
+            (
+                IKeyRegistry.KeyRegistryInitParams({
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "KeyRegistry", version: "1"})
-                }))
+                })
+            )
         );
     }
 
@@ -162,7 +162,8 @@ contract MyRelayDeploy is RelayDeploy {
             (
                 IVotingPowerProvider.VotingPowerProviderInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                        network: getNetwork(), subnetworkId: 0
+                        network: getNetwork(),
+                        subnetworkId: 0
                     }),
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "VotingPowers", version: "1"}),
                     requireSlasher: false,
@@ -211,7 +212,8 @@ contract MyRelayDeploy is RelayDeploy {
             (
                 ISettlement.SettlementInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                        network: getNetwork(), subnetworkId: 0
+                        network: getNetwork(),
+                        subnetworkId: 0
                     }),
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "Settlement", version: "1"}),
                     sigVerifier: verifier
@@ -225,26 +227,39 @@ contract MyRelayDeploy is RelayDeploy {
         vm.broadcast();
         implementation = address(new Driver());
 
-        IValSetDriver.QuorumThreshold[] memory quorumThresholds = new IValSetDriver.QuorumThreshold[](3);
-        quorumThresholds[0] =
-            IValSetDriver.QuorumThreshold({keyTag: REQUIRED_KEY_TAG, quorumThreshold: QUORUM_THRESHOLD});
-        quorumThresholds[1] =
-            IValSetDriver.QuorumThreshold({keyTag: REQUIRED_KEY_TAG_ECDSA, quorumThreshold: QUORUM_THRESHOLD});
-        quorumThresholds[2] =
-            IValSetDriver.QuorumThreshold({keyTag: REQUIRED_KEY_TAG_SECONDARY_BLS, quorumThreshold: QUORUM_THRESHOLD});
-        uint8[] memory requiredKeyTags = new uint8[](3);
+        IValSetDriver.QuorumThreshold[] memory quorumThresholds = new IValSetDriver.QuorumThreshold[](4);
+        quorumThresholds[0] = IValSetDriver.QuorumThreshold({
+            keyTag: REQUIRED_KEY_TAG,
+            quorumThreshold: QUORUM_THRESHOLD
+        });
+        quorumThresholds[1] = IValSetDriver.QuorumThreshold({
+            keyTag: REQUIRED_KEY_TAG_ECDSA,
+            quorumThreshold: QUORUM_THRESHOLD
+        });
+        quorumThresholds[2] = IValSetDriver.QuorumThreshold({
+            keyTag: REQUIRED_KEY_TAG_SECONDARY_BLS,
+            quorumThreshold: QUORUM_THRESHOLD
+        });
+        quorumThresholds[3] = IValSetDriver.QuorumThreshold({
+            keyTag: REQUIRED_KEY_TAG_BLS12381,
+            quorumThreshold: QUORUM_THRESHOLD
+        });
+        uint8[] memory requiredKeyTags = new uint8[](4);
         requiredKeyTags[0] = REQUIRED_KEY_TAG;
         requiredKeyTags[1] = REQUIRED_KEY_TAG_ECDSA;
         requiredKeyTags[2] = REQUIRED_KEY_TAG_SECONDARY_BLS;
+        requiredKeyTags[3] = REQUIRED_KEY_TAG_BLS12381;
         initData = abi.encodeCall(
             Driver.initialize,
             (
                 IValSetDriver.ValSetDriverInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                        network: getNetwork(), subnetworkId: 0
+                        network: getNetwork(),
+                        subnetworkId: 0
                     }),
                     epochManagerInitParams: IEpochManager.EpochManagerInitParams({
-                        epochDuration: EPOCH_DURATION, epochDurationTimestamp: 0
+                        epochDuration: EPOCH_DURATION,
+                        epochDurationTimestamp: 0
                     }),
                     numAggregators: NUM_AGGREGATORS,
                     numCommitters: NUM_COMMITTERS,
@@ -276,28 +291,28 @@ contract MyRelayDeploy is RelayDeploy {
 
     function runDeployVotingPowerProvider() public override {
         address votingPowerProvider = deployVotingPowerProvider({
-            proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: VOTING_POWER_PROVIDER_SALT
+            proxyOwner: getDeployerAddress(),
+            isDeployerGuarded: false,
+            salt: VOTING_POWER_PROVIDER_SALT
         });
         address network = getNetwork();
         SymbioticCoreConstants.Core memory core = getCore();
         vm.startBroadcast(getDeployerAddress());
-        Network(payable(network))
-            .schedule(
-                address(core.networkMiddlewareService),
-                0,
-                abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
-                bytes32(0),
-                bytes32(0),
-                0
-            );
-        Network(payable(network))
-            .execute(
-                address(core.networkMiddlewareService),
-                0,
-                abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
-                bytes32(0),
-                bytes32(0)
-            );
+        Network(payable(network)).schedule(
+            address(core.networkMiddlewareService),
+            0,
+            abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
+            bytes32(0),
+            bytes32(0),
+            0
+        );
+        Network(payable(network)).execute(
+            address(core.networkMiddlewareService),
+            0,
+            abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
+            bytes32(0),
+            bytes32(0)
+        );
         vm.stopBroadcast();
 
         fundOperators();
@@ -308,11 +323,16 @@ contract MyRelayDeploy is RelayDeploy {
     }
 
     function runDeploySettlement() public override {
-        address settlement =
-            deploySettlement({proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: SETTLEMENT_SALT});
+        address settlement = deploySettlement({
+            proxyOwner: getDeployerAddress(),
+            isDeployerGuarded: false,
+            salt: SETTLEMENT_SALT
+        });
         vm.broadcast();
-        address sumTask =
-            deployCreate3(bytes32(SUM_TASK_SALT), abi.encodePacked(type(SumTask).creationCode, abi.encode(settlement)));
+        address sumTask = deployCreate3(
+            bytes32(SUM_TASK_SALT),
+            abi.encodePacked(type(SumTask).creationCode, abi.encode(settlement))
+        );
         config.set("sum_task", sumTask);
 
         fundOperators();
@@ -325,40 +345,61 @@ contract MyRelayDeploy is RelayDeploy {
 
     function configureOperatorKeys(uint256 index) public {
         Vm.Wallet memory operator = getOperator(index);
-        (BN254.G1Point memory g1Key, BN254.G2Point memory g2Key) = getBLSKeys(operator.privateKey);
         KeyRegistry keyRegistry = KeyRegistry(getKeyRegistry().addr);
 
         vm.startBroadcast(operator.privateKey);
+
+        // Register primary BLS-BN254 key with tag 15
+        _registerBlsBn254Key(keyRegistry, operator, operator.privateKey, 15);
+
+        // Register secondary BLS-BN254 key with tag 11
+        _registerBlsBn254Key(keyRegistry, operator, operator.privateKey + 10_000, 11);
+
+        // Register ECDSA key
+        _registerEcdsaKey(keyRegistry, operator);
+
+        // Register BLS12-381 key with tag 1
+        _registerBls12381Key(keyRegistry, operator, operator.privateKey + 20_000, 1);
+
+        vm.stopBroadcast();
+    }
+
+    function _registerBlsBn254Key(
+        KeyRegistry keyRegistry,
+        Vm.Wallet memory operator,
+        uint256 privateKey,
+        uint8 keyTag
+    ) internal {
+        (BN254.G1Point memory g1Key, BN254.G2Point memory g2Key) = getBLSKeys(privateKey);
         bytes memory keyBytes = KeyBlsBn254.wrap(g1Key).toBytes();
         bytes32 messageHash = keyRegistry.hashTypedDataV4(
             keccak256(abi.encode(KEY_OWNERSHIP_TYPEHASH, operator.addr, keccak256(keyBytes)))
         );
         BN254.G1Point memory messageG1 = BN254.hashToG1(messageHash);
-        BN254.G1Point memory sigG1 = messageG1.scalar_mul(operator.privateKey);
-        keyRegistry.setKey(KEY_TYPE_BLS_BN254.getKeyTag(15), keyBytes, abi.encode(sigG1), abi.encode(g2Key));
+        BN254.G1Point memory sigG1 = messageG1.scalar_mul(privateKey);
+        keyRegistry.setKey(KEY_TYPE_BLS_BN254.getKeyTag(keyTag), keyBytes, abi.encode(sigG1), abi.encode(g2Key));
+    }
 
-        // Register BLS-BN254 key with tag 11, not related to header key tag
-        uint256 secondaryBLSKey = operator.privateKey + 10_000;
-        (g1Key, g2Key) = getBLSKeys(secondaryBLSKey);
-        keyBytes = KeyBlsBn254.wrap(g1Key).toBytes();
-        messageHash = keyRegistry.hashTypedDataV4(
-            keccak256(abi.encode(KEY_OWNERSHIP_TYPEHASH, operator.addr, keccak256(keyBytes)))
-        );
-        messageG1 = BN254.hashToG1(messageHash);
-        sigG1 = messageG1.scalar_mul(secondaryBLSKey);
-
-        keyRegistry.setKey(KEY_TYPE_BLS_BN254.getKeyTag(11), keyBytes, abi.encode(sigG1), abi.encode(g2Key));
-
-        keyBytes = KeyEcdsaSecp256k1.wrap(operator.addr).toBytes();
-        messageHash = keyRegistry.hashTypedDataV4(
+    function _registerEcdsaKey(KeyRegistry keyRegistry, Vm.Wallet memory operator) internal {
+        bytes memory keyBytes = KeyEcdsaSecp256k1.wrap(operator.addr).toBytes();
+        bytes32 messageHash = keyRegistry.hashTypedDataV4(
             keccak256(abi.encode(KEY_OWNERSHIP_TYPEHASH, operator.addr, keccak256(keyBytes)))
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(operator.privateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
-
-        // Register ECDSA key
         keyRegistry.setKey(KEY_TYPE_ECDSA_SECP256K1.getKeyTag(0), keyBytes, signature, new bytes(0));
-        vm.stopBroadcast();
+    }
+
+    function _registerBls12381Key(KeyRegistry keyRegistry, Vm.Wallet memory operator, uint256 privateKey,
+        uint8 keyTag) internal {
+        (BLS12381.G1Point memory g1Key, BLS12381.G2Point memory g2Key) = getBLS12381Keys(privateKey);
+        bytes memory keyBytes = KeyBlsBls12381.wrap(g1Key).toBytes();
+        bytes32 messageHash = keyRegistry.hashTypedDataV4(
+            keccak256(abi.encode(KEY_OWNERSHIP_TYPEHASH, operator.addr, keccak256(keyBytes)))
+        );
+        BLS12381.G1Point memory messageG1 = BLS12381.hashToG1(abi.encodePacked(messageHash));
+        BLS12381.G1Point memory sigG1 = messageG1.scalar_mul(privateKey);
+        keyRegistry.setKey(KEY_TYPE_BLS_BLS12381.getKeyTag(keyTag), keyBytes, abi.encode(sigG1), abi.encode(g2Key));
     }
 
     function registerOperator(uint256 index, uint256 stakeAmount) public {
@@ -399,9 +440,22 @@ contract MyRelayDeploy is RelayDeploy {
     function getBLSKeys(uint256 privateKey) public returns (BN254.G1Point memory, BN254.G2Point memory) {
         BN254.G1Point memory G1Key = BN254.generatorG1().scalar_mul(privateKey);
         BN254.G2Point memory G2 = BN254.generatorG2();
-        (uint256 x1, uint256 x2, uint256 y1, uint256 y2) =
-            BN254G2.ECTwistMul(privateKey, G2.X[1], G2.X[0], G2.Y[1], G2.Y[0]);
+        (uint256 x1, uint256 x2, uint256 y1, uint256 y2) = BN254G2.ECTwistMul(
+            privateKey,
+            G2.X[1],
+            G2.X[0],
+            G2.Y[1],
+            G2.Y[0]
+        );
         return (G1Key, BN254.G2Point([x2, x1], [y2, y1]));
+    }
+
+    function getBLS12381Keys(
+        uint256 privateKey
+    ) public view returns (BLS12381.G1Point memory, BLS12381.G2Point memory) {
+        BLS12381.G1Point memory G1Key = BLS12381.generatorG1().scalar_mul(privateKey);
+        BLS12381.G2Point memory G2Key = BLS12381G2.scalarMul(privateKey, BLS12381.generatorG2());
+        return (G1Key, G2Key);
     }
 
     function printOperatorsInfo() public {
@@ -409,13 +463,22 @@ contract MyRelayDeploy is RelayDeploy {
         address[] memory operators = votingPowers.getOperators();
         VotingPowers.OperatorVotingPower[] memory operatorVPs = votingPowers.getVotingPowers(new bytes[](0));
 
-        string memory logMessage =
-            string.concat("Operators total: ", vm.toString(operators.length), "\n", "Operators:\n");
+        string memory logMessage = string.concat(
+            "Operators total: ",
+            vm.toString(operators.length),
+            "\n",
+            "Operators:\n"
+        );
 
         for (uint256 i; i < operatorVPs.length; ++i) {
             uint256 totalVotingPower;
-            logMessage =
-                string.concat(logMessage, "   Address: ", vm.toString(operatorVPs[i].operator), "\n", "   Vaults:\n");
+            logMessage = string.concat(
+                logMessage,
+                "   Address: ",
+                vm.toString(operatorVPs[i].operator),
+                "\n",
+                "   Vaults:\n"
+            );
             for (uint256 j; j < operatorVPs[i].vaults.length; ++j) {
                 logMessage = string.concat(
                     logMessage,
