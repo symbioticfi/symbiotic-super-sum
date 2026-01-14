@@ -20,14 +20,18 @@ import {KeyTags} from "@symbioticfi/relay-contracts/src/libraries/utils/KeyTags.
 import {KeyEcdsaSecp256k1} from "@symbioticfi/relay-contracts/src/libraries/keys/KeyEcdsaSecp256k1.sol";
 import {KeyBlsBn254} from "@symbioticfi/relay-contracts/src/libraries/keys/KeyBlsBn254.sol";
 import {KeyBlsBls12381} from "@symbioticfi/relay-contracts/src/libraries/keys/KeyBlsBls12381.sol";
-import {SigVerifierBlsBn254Simple} from
-    "@symbioticfi/relay-contracts/src/modules/settlement/sig-verifiers/SigVerifierBlsBn254Simple.sol";
-import {SigVerifierBlsBn254ZK} from
-    "@symbioticfi/relay-contracts/src/modules/settlement/sig-verifiers/SigVerifierBlsBn254ZK.sol";
-import {IVotingPowerProvider} from
-    "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/IVotingPowerProvider.sol";
-import {IOpNetVaultAutoDeploy} from
-    "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/extensions/IOpNetVaultAutoDeploy.sol";
+import {
+    SigVerifierBlsBn254Simple
+} from "@symbioticfi/relay-contracts/src/modules/settlement/sig-verifiers/SigVerifierBlsBn254Simple.sol";
+import {
+    SigVerifierBlsBn254ZK
+} from "@symbioticfi/relay-contracts/src/modules/settlement/sig-verifiers/SigVerifierBlsBn254ZK.sol";
+import {
+    IVotingPowerProvider
+} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/IVotingPowerProvider.sol";
+import {
+    IOpNetVaultAutoDeploy
+} from "@symbioticfi/relay-contracts/src/interfaces/modules/voting-power/extensions/IOpNetVaultAutoDeploy.sol";
 import {INetworkManager} from "@symbioticfi/relay-contracts/src/interfaces/modules/base/INetworkManager.sol";
 import {IOzEIP712} from "@symbioticfi/relay-contracts/src/interfaces/modules/base/IOzEIP712.sol";
 import {IOzOwnable} from "@symbioticfi/relay-contracts/src/interfaces/modules/common/permissions/IOzOwnable.sol";
@@ -74,7 +78,7 @@ contract MyRelayDeploy is RelayDeploy {
     uint256 internal constant OPERATOR_STAKE_AMOUNT = 100_000;
     uint8 internal constant REQUIRED_KEY_TAG_ECDSA = 16; // 16 is the default key tag for ecdsa keys (ECDSA-SECP256K1/0)
     uint8 internal constant REQUIRED_KEY_TAG_SECONDARY_BLS = 11;
-    uint8 internal constant REQUIRED_KEY_TAG_BLS12381 = 33; // 33 is the default key tag (BLS12-381/1)
+    uint8 internal constant REQUIRED_KEY_TAG_BLS12381 = 32; // 32 is the default key tag (BLS12-381/1)
     uint256 internal immutable OPERATOR_COUNT = vm.envOr("OPERATOR_COUNT", uint256(4));
     uint8 internal immutable VERIFICATION_TYPE = uint8(vm.envOr("VERIFICATION_TYPE", uint256(1)));
     uint208 internal immutable NUM_AGGREGATORS = uint208(vm.envOr("NUM_AGGREGATORS", uint256(1)));
@@ -118,8 +122,7 @@ contract MyRelayDeploy is RelayDeploy {
                     networkImpl,
                     abi.encodeCall(
                         INetwork.initialize,
-                        (
-                            INetwork.NetworkInitParams({
+                        (INetwork.NetworkInitParams({
                                 globalMinDelay: 0,
                                 delayParams: new INetwork.DelayParams[](0),
                                 proposers: proposersAndExecutors,
@@ -129,8 +132,7 @@ contract MyRelayDeploy is RelayDeploy {
                                 defaultAdminRoleHolder: getDeployerAddress(),
                                 nameUpdateRoleHolder: getDeployerAddress(),
                                 metadataURIUpdateRoleHolder: getDeployerAddress()
-                            })
-                        )
+                            }))
                     ),
                     getDeployerAddress(),
                     false
@@ -146,11 +148,9 @@ contract MyRelayDeploy is RelayDeploy {
 
         initData = abi.encodeCall(
             KeyRegistry.initialize,
-            (
-                IKeyRegistry.KeyRegistryInitParams({
+            (IKeyRegistry.KeyRegistryInitParams({
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "KeyRegistry", version: "1"})
-                })
-            )
+                }))
         );
     }
 
@@ -170,8 +170,7 @@ contract MyRelayDeploy is RelayDeploy {
             (
                 IVotingPowerProvider.VotingPowerProviderInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                        network: getNetwork(),
-                        subnetworkId: 0
+                        network: getNetwork(), subnetworkId: 0
                     }),
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "VotingPowers", version: "1"}),
                     requireSlasher: false,
@@ -220,8 +219,7 @@ contract MyRelayDeploy is RelayDeploy {
             (
                 ISettlement.SettlementInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                        network: getNetwork(),
-                        subnetworkId: 0
+                        network: getNetwork(), subnetworkId: 0
                     }),
                     ozEip712InitParams: IOzEIP712.OzEIP712InitParams({name: "Settlement", version: "1"}),
                     sigVerifier: verifier
@@ -254,12 +252,10 @@ contract MyRelayDeploy is RelayDeploy {
             (
                 IValSetDriver.ValSetDriverInitParams({
                     networkManagerInitParams: INetworkManager.NetworkManagerInitParams({
-                        network: getNetwork(),
-                        subnetworkId: 0
+                        network: getNetwork(), subnetworkId: 0
                     }),
                     epochManagerInitParams: IEpochManager.EpochManagerInitParams({
-                        epochDuration: EPOCH_DURATION,
-                        epochDurationTimestamp: 0
+                        epochDuration: EPOCH_DURATION, epochDurationTimestamp: 0
                     }),
                     numAggregators: NUM_AGGREGATORS,
                     numCommitters: NUM_COMMITTERS,
@@ -291,28 +287,28 @@ contract MyRelayDeploy is RelayDeploy {
 
     function runDeployVotingPowerProvider() public override {
         address votingPowerProvider = deployVotingPowerProvider({
-            proxyOwner: getDeployerAddress(),
-            isDeployerGuarded: false,
-            salt: VOTING_POWER_PROVIDER_SALT
+            proxyOwner: getDeployerAddress(), isDeployerGuarded: false, salt: VOTING_POWER_PROVIDER_SALT
         });
         address network = getNetwork();
         SymbioticCoreConstants.Core memory core = getCore();
         vm.startBroadcast(getDeployerAddress());
-        Network(payable(network)).schedule(
-            address(core.networkMiddlewareService),
-            0,
-            abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
-            bytes32(0),
-            bytes32(0),
-            0
-        );
-        Network(payable(network)).execute(
-            address(core.networkMiddlewareService),
-            0,
-            abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
-            bytes32(0),
-            bytes32(0)
-        );
+        Network(payable(network))
+            .schedule(
+                address(core.networkMiddlewareService),
+                0,
+                abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
+                bytes32(0),
+                bytes32(0),
+                0
+            );
+        Network(payable(network))
+            .execute(
+                address(core.networkMiddlewareService),
+                0,
+                abi.encodeWithSelector(INetworkMiddlewareService.setMiddleware.selector, votingPowerProvider),
+                bytes32(0),
+                bytes32(0)
+            );
         vm.stopBroadcast();
 
         fundOperators();
