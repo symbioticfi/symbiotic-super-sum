@@ -25,10 +25,11 @@ library BLS12381G2 {
      * @param g2Point The G2 point to multiply
      * @return result The resulting G2 point after scalar multiplication
      */
-    function scalarMul(
-        uint256 scalar,
-        BLS12381.G2Point memory g2Point
-    ) internal view returns (BLS12381.G2Point memory result) {
+    function scalarMul(uint256 scalar, BLS12381.G2Point memory g2Point)
+        internal
+        view
+        returns (BLS12381.G2Point memory result)
+    {
         assembly ("memory-safe") {
             let m := mload(0x40)
 

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {
-    EqualStakeVPCalc
-} from "@symbioticfi/relay-contracts/src/modules/voting-power/common/voting-power-calc/EqualStakeVPCalc.sol";
-import {
-    OpNetVaultAutoDeploy
-} from "@symbioticfi/relay-contracts/src/modules/voting-power/extensions/OpNetVaultAutoDeploy.sol";
+import {EqualStakeVPCalc} from
+    "@symbioticfi/relay-contracts/src/modules/voting-power/common/voting-power-calc/EqualStakeVPCalc.sol";
+import {OpNetVaultAutoDeploy} from
+    "@symbioticfi/relay-contracts/src/modules/voting-power/extensions/OpNetVaultAutoDeploy.sol";
 import {OzOwnable} from "@symbioticfi/relay-contracts/src/modules/common/permissions/OzOwnable.sol";
 import {VotingPowerProvider} from "@symbioticfi/relay-contracts/src/modules/voting-power/VotingPowerProvider.sol";
 

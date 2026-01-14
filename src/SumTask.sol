@@ -83,14 +83,16 @@ contract SumTask {
         }
 
         // verify the quorum signature
-        if (!settlement.verifyQuorumSigAt(
+        if (
+            !settlement.verifyQuorumSigAt(
                 abi.encode(keccak256(abi.encode(taskId, result))),
                 settlement.getRequiredKeyTagFromValSetHeaderAt(epoch),
                 settlement.getQuorumThresholdFromValSetHeaderAt(epoch),
                 proof,
                 epoch,
                 new bytes(0)
-            )) {
+            )
+        ) {
             revert InvalidQuorumSignature();
         }
 
