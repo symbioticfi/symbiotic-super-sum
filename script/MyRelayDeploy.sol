@@ -78,7 +78,7 @@ contract MyRelayDeploy is RelayDeploy {
     uint256 internal constant OPERATOR_STAKE_AMOUNT = 100_000;
     uint8 internal constant REQUIRED_KEY_TAG_ECDSA = 16; // 16 is the default key tag for ecdsa keys (ECDSA-SECP256K1/0)
     uint8 internal constant REQUIRED_KEY_TAG_SECONDARY_BLS = 11;
-    uint8 internal constant REQUIRED_KEY_TAG_BLS12381 = 32; // 32 is the default key tag (BLS12-381/1)
+    uint8 internal constant REQUIRED_KEY_TAG_BLS12381 = 33; // 33 is the default key tag (BLS12-381/1)
     uint256 internal immutable OPERATOR_COUNT = vm.envOr("OPERATOR_COUNT", uint256(4));
     uint8 internal immutable VERIFICATION_TYPE = uint8(vm.envOr("VERIFICATION_TYPE", uint256(1)));
     uint208 internal immutable NUM_AGGREGATORS = uint208(vm.envOr("NUM_AGGREGATORS", uint256(1)));
